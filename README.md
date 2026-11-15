@@ -4,11 +4,14 @@ Mods that change how the Claude desktop app looks.
 
 ## studio-looks
 
-Pick the app's look from a collection of fifteen themes. A look is three things you can mix:
+Pick the app's look from a collection of fifteen themes. A look is a few things you can mix:
 
 - **Colours** for the whole app, in light and dark.
 - **A background behind the conversation**: a lava lamp, soft glows, dissolving pixels, falling symbols, or colours only. It can move or sit still.
 - **A progress bar above the message box** that follows Claude's task list, drawn to match the background.
+- **Readable replies.** Over a background, each of Claude's replies sits on a panel in the theme's own surface colour, the way your messages do. It can be turned off.
+- **A solid decision card.** When Claude ends a turn with a question, the mod shows it on a solid panel above the message box, with its answers as buttons that send your reply. The app's own card in the conversation gets no panel over a background; turn it off under Settings, "Summary and next steps", to see one only.
+- **How much of the background shows behind the conversation**: light, medium, strong or solid. The app's own cards, such as the summary and next steps, have no panel of their own over a background, so this is what keeps them readable.
 
 Themes: Neon Arcade, Midnight Pop, Workshop, Playground, Dusk, Backstage, Ember, Deep Sea, Orchard, Ink, Green Rain, Cipher, Pixel Dust, Static, Sunset Blocks.
 

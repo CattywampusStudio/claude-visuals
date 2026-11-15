@@ -147,10 +147,10 @@ export const swatch = (theme: Theme): string =>
 
 /**
  * A small picture of the app in a theme, for browsing before applying: the page
- * with its wax, two frosted panels, a few lines of text, an accent button and
- * the progress tube.
+ * over the background in use (wax, squares, symbols, or none), two frosted
+ * panels, a few lines of text, an accent button and the progress bar.
  */
-export const preview = (theme: Theme): string => {
+export const preview = (theme: Theme, background: string = theme.background): string => {
   const w = 320
   const h = 190
   const blobs: [number, number, number, number, number][] = [
@@ -160,9 +160,10 @@ export const preview = (theme: Theme): string => {
     [285, 60, 40, 3, 13],
     [250, 120, 26, 1, 8],
   ]
-  // the page behind the panels, drawn as the theme's own background: wax, squares or symbols
+  // the page behind the panels, drawn as the background in use: wax, squares, symbols, or the colours alone
   let back = `<g class="wax" filter="url(#soft)">${blobs.map(([x, y, r, c, d], i) => `<ellipse class="f c${c}" style="--dy:${i % 2 ? d : -d}px;animation-delay:-${i * 2}s" cx="${x}" cy="${y}" rx="${r}" ry="${Math.round(r * 1.1)}"/>`).join('')}</g>`
-  if (theme.background === 'pixels') {
+  if (background === 'plain') back = ''
+  if (background === 'pixels') {
     let squares = ''
     for (let r = 0; r < 10; r++) {
       for (let c = 0; c < 16; c++) {
@@ -173,7 +174,7 @@ export const preview = (theme: Theme): string => {
     }
     back = `<g class="wax">${squares}</g>`
   }
-  if (theme.background === 'rain') {
+  if (background === 'rain') {
     const marks = ['7', '+', 'Σ', '0', '#', 'λ', '=', '4', 'π', '*', '1', 'Δ']
     let streams = ''
     for (let c = 0; c < 20; c++) {
@@ -189,10 +190,10 @@ export const preview = (theme: Theme): string => {
   }
   // the little progress bar in the panel, in the same style as the real one
   let mini = `<g clip-path="url(#tube)"><rect class="c0" x="104" y="150" width="130" height="10"/><ellipse class="c1" cx="130" cy="151" rx="12" ry="5"/><ellipse class="c2" cx="170" cy="160" rx="13" ry="5"/><ellipse class="c3" cx="214" cy="151" rx="11" ry="5"/></g>`
-  if (theme.background === 'pixels') {
+  if (background === 'pixels') {
     mini = Array.from({ length: 16 }, (_, i) => `<rect class="${i < 10 ? `c${(i * 7) % 4}` : 'tr'}" x="${104 + i * 12.2}" y="150" width="9.5" height="9.5" rx="2"/>`).join('')
   }
-  if (theme.background === 'rain') {
+  if (background === 'rain') {
     const row = ['7', '+', 'Σ', '0', '#', 'λ', '=', '4', 'π', '*', '1', 'Δ', '/', '9', 'φ', ':', '3', 'Ω']
     mini = row.map((g, i) => `<text class="${i === 10 ? 'hd' : i < 10 ? 'c0' : 'm'} sy" x="${109 + i * 10.8}" y="160">${g}</text>`).join('')
   }
@@ -220,7 +221,7 @@ export const preview = (theme: Theme): string => {
     `<text class="aa" x="104" y="36">Aa 123</text>` +
     [0, 1, 2].map(i => `<rect class="${i === 0 ? 't' : 'm'}" x="104" y="${50 + i * 14}" width="${[150, 186, 120][i]}" height="6" rx="3"/>`).join('') +
     `<rect class="a" x="104" y="100" width="62" height="20" rx="10"/>` +
-    (theme.background === 'pixels' || theme.background === 'rain' ? '' : `<rect class="tr" x="104" y="150" width="194" height="10" rx="5"/>`) +
+    (background === 'pixels' || background === 'rain' ? '' : `<rect class="tr" x="104" y="150" width="194" height="10" rx="5"/>`) +
     mini +
     `</g><rect class="edge" x=".5" y=".5" width="${w - 1}" height="${h - 1}" rx="13.5"/></svg>`
   )

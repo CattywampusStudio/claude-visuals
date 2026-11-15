@@ -1,6 +1,6 @@
-// The theme collection: each theme's colours in light and dark, and the background it opens with.
+// The theme collection: each theme's colours in light and dark.
 export type Mode = { ground: string; card: string; text: string; muted: string; accent: string; good: string; warning: string; bad: string; washes: readonly string[] }
-/** background: the background a theme opens with. */
+/** background: the background the theme was first drawn with. Picking a theme does not apply it: the background in use stays. */
 export type Theme = { id: string; label: string; background: string; light: Mode; dark: Mode }
 export const THEMES: readonly Theme[] = [
   {

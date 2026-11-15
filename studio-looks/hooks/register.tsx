@@ -1,7 +1,7 @@
 import { atom, read, update } from 'claude-code'
 import type { EngineInterface, Register, ThemeSetArgs } from 'claude-code'
 
-import type { Background, BarStyle, Choice, Motion, Plan } from '../types'
+import type { Background, BarStyle, Card, Choice, Decisions, Motion, Plan, Replies, Veil } from '../types'
 import { preview, themedBar } from './bar.ts'
 import { colorsFor } from './look.ts'
 import { KINDS, backdrop } from './scene.ts'
@@ -27,9 +27,26 @@ const MOTIONS: readonly { value: Motion; label: string }[] = [
   { value: 'on', label: 'On' },
   { value: 'off', label: 'Off (a still picture)' },
 ]
-const FIRST: Choice = { theme: 'neon-arcade', background: 'lamp', bar: 'lava', motion: 'on' }
+const REPLIES: readonly { value: Replies; label: string }[] = [
+  { value: 'bubble', label: 'In a bubble' },
+  { value: 'plain', label: 'On the background' },
+]
+const VEILS: readonly { value: Veil; label: string }[] = [
+  { value: 'light', label: 'Light: the background shows through' },
+  { value: 'medium', label: 'Medium' },
+  { value: 'strong', label: 'Strong' },
+  { value: 'solid', label: 'Solid: no background behind the conversation' },
+]
+const DECISIONS: readonly { value: Decisions; label: string }[] = [
+  { value: 'mod', label: 'Solid, above the message box' },
+  { value: 'app', label: "The app's own only" },
+]
+const FIRST: Choice = { theme: 'neon-arcade', background: 'lamp', bar: 'lava', motion: 'on', replies: 'bubble', veil: 'medium', decisions: 'mod' }
 
-const choice = atom({ plugin: 'studio-looks', key: 'choice' } as const, FIRST, { shape: 'choice-4' })
+const choice = atom({ plugin: 'studio-looks', key: 'choice' } as const, FIRST, { shape: 'choice-7' })
+const card = atom({ plugin: 'studio-looks', key: 'card' } as const, null as Card | null, { shape: 'card-1' })
+// true after "/looks off", until the next pick: the app is back to its own look, so nothing of this mod's is drawn on it
+const cleared = atom({ plugin: 'studio-looks', key: 'isCleared' } as const, false)
 const browse = atom({ plugin: 'studio-looks', key: 'browse' } as const, FIRST.theme)
 const plan = atom({ plugin: 'studio-looks', key: 'plan' } as const, null as Plan | null, { shape: 'plan-1' })
 
@@ -45,6 +62,9 @@ const mend = (raw: unknown): Choice => {
     background: wasStill ? 'lamp' : (BACKGROUNDS.find(b => b.value === r.background)?.value ?? FIRST.background),
     bar: BARS.find(b => b.value === r.bar)?.value ?? FIRST.bar,
     motion: wasStill ? 'off' : (MOTIONS.find(b => b.value === r.motion)?.value ?? FIRST.motion),
+    replies: REPLIES.find(b => b.value === r.replies)?.value ?? FIRST.replies,
+    veil: VEILS.find(b => b.value === r.veil)?.value ?? FIRST.veil,
+    decisions: DECISIONS.find(b => b.value === r.decisions)?.value ?? FIRST.decisions,
   }
 }
 
@@ -56,7 +76,12 @@ const look = (c: Choice): ThemeSetArgs => {
   // frosting wipes out (seen in the app: the pixels were very faint), so their panels are clearer and barely blurred.
   // The blur is never 0: read in the app's own styles, panels with no blur are tinted at 70% or more whatever
   // opacity is asked for, and seen in the app that left only a faint glow of the background.
-  const glass = c.background === 'pixels' ? { blur: 3, opacity: 0.32 } : c.background === 'rain' ? { blur: 6, opacity: 0.45 } : { blur: 18, opacity: 0.55 }
+  const light = c.background === 'pixels' ? { blur: 3, opacity: 0.32 } : c.background === 'rain' ? { blur: 6, opacity: 0.45 } : { blur: 18, opacity: 0.55 }
+  // Read in the app's styles: behind the conversation column the app lays a veil of the panel colour whose
+  // strength is this opacity, and it draws its own cards there (the summary and next steps, tool cards) with no
+  // ground of their own. So a card is only as readable as the veil is strong; a mod cannot draw on those cards.
+  const strength = { medium: 0.72, strong: 0.88, solid: 1 } as const
+  const glass = c.veil === 'light' ? light : { blur: Math.max(light.blur, c.veil === 'medium' ? 8 : 14), opacity: strength[c.veil] }
   return c.background === 'plain' ? { colors } : { colors, backdrop: { scene: `${c.background}_${c.motion}_${c.theme}`, glass } }
 }
 
@@ -102,6 +127,38 @@ const heard = (tool: string, args: Record<string, unknown>, now: Plan | null): P
   return { steps }
 }
 
+// The app's own actions on its card (commit, open a pull request) are the app's to run. Here the ones that
+// are also something to ask Claude for become a reply in words; the two that only the app can do are left out.
+const ACTION_WORDS: Record<string, string> = {
+  commit: 'Commit this',
+  create_pr: 'Create a pull request',
+  merge: 'Merge it',
+  fix_ci: 'Fix CI',
+  address_comments: 'Address the comments',
+  resolve_conflicts: 'Resolve the conflicts',
+  verify: 'Verify it',
+}
+
+/** The question a turn's wrap-up call ends on, or null when it asks nothing. */
+const cardOf = (args: Record<string, unknown>): Card | null => {
+  const ask = typeof args.ask === 'string' ? args.ask.trim() : ''
+  if (ask === '') return null
+  const answers = (Array.isArray(args.actions) ? args.actions : [])
+    .map(one => {
+      const o = (one ?? {}) as { label?: unknown; action?: unknown }
+      return typeof o.action === 'string' ? (ACTION_WORDS[o.action] ?? '') : typeof o.label === 'string' ? o.label.trim() : ''
+    })
+    .filter(label => label !== '')
+    .slice(0, 2)
+  return { recap: typeof args.recap === 'string' ? args.recap.trim() : '', ask, answers }
+}
+
+/** A press on one of the card's answers: the card goes, and the answer is sent as the person's own words. */
+const answer = async ($: EngineInterface, label: string) => {
+  await update($, card, () => null)
+  await $.prompt.submit({ text: label, asUser: true })
+}
+
 const DEMO = ['Read the brief', 'Mix the wax', 'Light the lamp', 'Watch it rise']
 /** The picker's try-out button: a made-up list that moves one step per press, then clears. */
 const demoNext = (now: Plan | null): Plan | null => {
@@ -114,17 +171,17 @@ const demoNext = (now: Plan | null): Plan | null => {
 }
 
 // One place changes the look: the pickers and the command both come here.
-const pick = async ($: EngineInterface, asked: Partial<Choice>) => {
-  // a theme opens with its own background, unless the same pick names one
-  const patch: Partial<Choice> = asked.theme !== undefined && asked.background === undefined ? { ...asked, background: mend({ background: themeOf(asked.theme).background }).background } : asked
+// A pick changes only what it names: a new theme recolours the background in use, it does not swap it.
+const pick = async ($: EngineInterface, patch: Partial<Choice>) => {
   await update($, choice, c => ({ ...c, ...patch }))
+  await update($, cleared, () => false)
   if (patch.theme !== undefined) {
     const picked = patch.theme
     await update($, browse, () => picked)
   }
   const now = await read($, choice)
   await $.store.set('choice', now)
-  if (patch.theme !== undefined || patch.background !== undefined || patch.motion !== undefined) {
+  if (patch.theme !== undefined || patch.background !== undefined || patch.motion !== undefined || patch.veil !== undefined) {
     const unpainted = colorsFor(themeOf(now.theme)).problems.find(line => line.startsWith("Desktop won't paint"))
     if (unpainted !== undefined) {
       $.ui.toast(unpainted)
@@ -153,6 +210,7 @@ export const register: Register = on => {
     await $.command.register({ name: 'looks', description: 'Pick the app look: theme, background and progress bar', argumentHint: '[theme] [lamp|soft|pixels|rain|plain] [off]' })
     const stored = mend(await $.store.get('choice'))
     await update($, choice, () => stored)
+    await update($, cleared, () => false)
     await update($, browse, () => stored.theme)
     const made = colorsFor(themeOf(stored.theme))
     const unpainted = made.problems.find(line => line.startsWith("Desktop won't paint"))
@@ -171,6 +229,7 @@ export const register: Register = on => {
   on('command.run', { command: 'looks' }, async ($, e) => {
     const words = e.args.toLowerCase().split(/\s+/).filter(Boolean)
     if (words.includes('off')) {
+      await update($, cleared, () => true)
       await $.theme.clear()
       return { text: 'Look cleared: the app is back to its own colours. Pick again in the Looks pane or with /looks.' }
     }
@@ -189,6 +248,10 @@ export const register: Register = on => {
     if (tool === 'TodoWrite' || tool.endsWith('__update_plan') || tool.endsWith('__wrap_up')) {
       const args = e as unknown as Record<string, unknown>
       await update($, plan, now => heard(tool, args, now))
+      if (tool.endsWith('__wrap_up')) {
+        const asked = cardOf(args)
+        await update($, card, () => asked)
+      }
     }
 
     return next(e)
@@ -197,6 +260,8 @@ export const register: Register = on => {
   // A finished list leaves with the next prompt; an unfinished one stays for the work to go on.
   on('prompt.submit', async ($, e, next) => {
     await update($, plan, now => (now && now.steps.every(s => s.status === 'completed') ? null : now))
+    // a new message answers or passes over whatever was asked
+    await update($, card, () => null)
 
     return next(e)
   })
@@ -215,16 +280,70 @@ export const register: Register = on => {
     return <Svg source={backdrop(theme, kind, isMoving)} alt={`${theme.label}: ${what}, ${isMoving ? 'slowly moving' : 'still'}`} isInteractive />
   })
 
+  // Claude's replies over a drawn background. The app's veil behind the conversation is only a tint, so on a
+  // busy scene a reply can still be hard to read. Here each reply goes on a panel in the theme's surface colour,
+  // the one your own messages sit on. The app's own drawing of the reply is kept inside it.
+  on('ui.render', { component: 'AssistantMessage' }, async ($, e, next) => {
+    const row = await next(e)
+    const c = await read($, choice)
+    const isOff = await read($, cleared)
+    if (e.surface !== 'desktop' || isOff || c.replies !== 'bubble' || c.background === 'plain') {
+      return row
+    }
+    const { Box } = $.ui.resolve(e)
+
+    return (
+      <Box borderStyle="round" borderDimColor backgroundColor="userMessageBackground">
+        {row}
+      </Box>
+    )
+  })
+
   on('ui.render', { component: 'AbovePrompt' }, async ($, e, next) => {
     const c = await read($, choice)
     const list = await read($, plan)
+    const asked = await read($, card)
+    const isOff = await read($, cleared)
+    const { Box, Text, Button, Progress } = $.ui.resolve(e)
+    // the small button that opens the picker; it stays when no work is running, so the picker is always one press away
+    const looks = <Button key="looks" label="Looks" plain dimColor onPress={() => void $.ui.open({ id: PANE, title: TITLE })} />
+    // The question the turn ended on, on a solid panel. The app draws its own such card in the conversation with
+    // no ground of its own over a background, and a mod cannot draw on that one, so this one stands above the prompt.
+    if (asked !== null && !e.props.hasSurvey && !e.props.isWorking && !isOff && c.decisions === 'mod' && e.surface !== 'terminal') {
+      // the summary goes in when the band has the rows for it; the question and its answers always do
+      const columns = Math.max(20, e.props.bodyColumns)
+      const rowsFor = (text: string) => Math.ceil(text.length / columns)
+      const hasRecap = asked.recap !== '' && rowsFor(asked.recap) + rowsFor(asked.ask) + 4 <= e.props.maxRows
+
+      const first = asked.answers[0] ?? 'OK'
+      const second = asked.answers[1] ?? 'Not now'
+      const question = <Text bold>{asked.ask}</Text>
+      const answers = (
+        <Box flexDirection="row" gap="sm" alignItems="center">
+          <Button key="answer-0" label={first} variant="primary" onPress={() => void answer($, first)} />
+          <Button key="answer-1" label={second} variant="secondary" onPress={() => void answer($, second)} />
+          <Button key="dismiss" label="Dismiss" plain dimColor onPress={() => void update($, card, () => null)} />
+          {looks}
+        </Box>
+      )
+
+      return hasRecap ? (
+        <Box flexDirection="column" gap="sm" borderStyle="round" borderDimColor backgroundColor="userMessageBackground">
+          <Text dimColor>{asked.recap}</Text>
+          {question}
+          {answers}
+        </Box>
+      ) : (
+        <Box flexDirection="column" gap="sm" borderStyle="round" borderDimColor backgroundColor="userMessageBackground">
+          {question}
+          {answers}
+        </Box>
+      )
+    }
     if (e.props.hasSurvey || c.bar === 'off') {
       return next(e)
     }
-    const { Box, Text, Button, Progress } = $.ui.resolve(e)
     const theme = themeOf(c.theme)
-    // the small button that opens the picker; it stays when no work is running, so the picker is always one press away
-    const looks = <Button key="looks" label="Looks" plain dimColor onPress={() => void $.ui.open({ id: PANE, title: TITLE })} />
     if (list === null && !e.props.isWorking) {
       return (
         <Box flexDirection="row" gap="sm" alignItems="center">
@@ -284,9 +403,9 @@ export const register: Register = on => {
     return (
       <Box flexDirection="column" gap="md">
         <Text dimColor size="caption">
-          Browse the themes with the arrows, then apply the one you like. A theme opens with its own background; change it below. Your pick is kept for your next session.
+          Browse the themes with the arrows, then apply the one you like. A theme changes the colours; the background, motion and bar stay as you set them below. Your pick is kept for your next session.
         </Text>
-        <Svg source={preview(shown)} alt={`Preview of ${shown.label}: the app's page, panels, text, accent and progress bar in this theme's colours`} />
+        <Svg source={preview(shown, c.background)} alt={`Preview of ${shown.label}: the app's page, panels, text, accent and progress bar in this theme's colours, over the background in use`} />
         <Text>
           {shown.label} · {at + 1} of {THEMES.length}
           {shown.id === theme.id ? ' · in use' : ''}
@@ -301,6 +420,18 @@ export const register: Register = on => {
         <Select key="motion" label="Motion in the background" value={c.motion} options={MOTIONS} onSelect={value => void pick($, { motion: mend({ motion: value }).motion })} />
         <Text dimColor size="caption">
           The app plays a moving background only while it is safe and cheap to draw, and follows its own Motion setting.
+        </Text>
+        <Select key="replies" label="Claude's replies" value={c.replies} options={REPLIES} onSelect={value => void pick($, { replies: mend({ replies: value }).replies })} />
+        <Text dimColor size="caption">
+          Over a background, a reply sits on a panel in the theme's own surface colour, as your messages do, so the words stay readable. Colours only needs none.
+        </Text>
+        <Select key="veil" label="Behind the conversation" value={c.veil} options={VEILS} onSelect={value => void pick($, { veil: mend({ veil: value }).veil })} />
+        <Text dimColor size="caption">
+          How strongly the app tints the conversation column over the background. The app's own cards, such as the summary and next steps, get no panel of their own and a mod cannot give them one, so this is what makes them readable. Solid leaves the background at the sides only.
+        </Text>
+        <Select key="decisions" label="Decision card" value={c.decisions} options={DECISIONS} onSelect={value => void pick($, { decisions: mend({ decisions: value }).decisions })} />
+        <Text dimColor size="caption">
+          When Claude ends a turn with a question, this mod can show it on a solid panel above the message box, with its answers as buttons. The app also draws its own card in the conversation; turn that one off under Settings, "Summary and next steps", to see one only.
         </Text>
         <Select key="bar" label="Progress bar" value={c.bar} options={BARS} onSelect={value => void pick($, { bar: mend({ bar: value }).bar })} />
         <Text dimColor size="caption">
