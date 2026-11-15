@@ -17,7 +17,7 @@ claude plugin install studio-looks --marketplace CattywampusStudio/claude-visual
 
 Then start a new session in the desktop app's Code tab. A **Looks** pane opens beside the conversation.
 
-Mods run with your own access to files and the network, so it is worth reading a mod's code before you install it. This one reads and writes only its own saved pick.
+Mods run with your own access to files and the network, so it is worth reading a mod's code before you install it. This one reads and writes only its own saved pick. [SECURITY.md](SECURITY.md) says what else it sees and how to report a problem.
 
 ## Use
 
@@ -88,9 +88,10 @@ The mod's code is in the `studio-looks` folder of this repository. With a copy o
 ```
 claude --plugin-dir ./studio-looks
 claude plugin validate ./studio-looks
+claude plugin test ./studio-looks
 ```
 
-The first starts a session with your copy loaded; the second checks it. The official guide to writing mods is at [code.claude.com/docs/en/plugins/mods](https://code.claude.com/docs/en/plugins/mods).
+The first starts a session with your copy loaded, the second checks its setup, and the third runs its tests. Run them with the Claude Code version named under Install, or later. The official guide to writing mods is at [code.claude.com/docs/en/plugins/mods](https://code.claude.com/docs/en/plugins/mods).
 
 One thing worth knowing before drawing a background of your own: the app animates only SVG it accepts, and draws anything else as a still picture with no error. The mod's tests check every background against the rules the app was using when they were written.
 
@@ -107,4 +108,4 @@ Made by Cattywampus Studio as a fun side project. We have no connection to Anthr
 
 They are the colour helper that comes with Claude Code's plugin-authoring skill. That skill tells a mod's author to copy the two files into the mod and leave them as they are, and that is what we did: they are here unchanged. They remain Anthropic's, under Anthropic's own terms. We claim no rights in them and give none. The [notice](studio-looks/NOTICE.md) kept beside the mod says the same.
 
-The plotter, loom and glyph backgrounds took their idea, mechanical motion in steps, from the industrial side-project style of @tol__is. The drawings and marks here are our own.
+The plotter, loom and glyph backgrounds were inspired by the industrial, step-by-step motion in the visuals of [@tol__is on X](https://x.com/tol__is). Nothing of theirs is used here: every drawing and mark in this mod is our own.
