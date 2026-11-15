@@ -19,6 +19,11 @@ const PICTURES: readonly (readonly [Kind, string])[] = [
   ['plotter', 'ink'],
   ['weave', 'ember'],
   ['glyphs', 'cipher'],
+  ['flock', 'dusk'],
+  ['nebula', 'synthwave'],
+  ['ridges', 'static'],
+  ['circuit', 'green-rain'],
+  ['tunnel', 'neon-arcade'],
 ]
 
 const out = new URL('../images/', import.meta.url)

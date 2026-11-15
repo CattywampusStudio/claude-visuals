@@ -1,5 +1,6 @@
 import { expect, test } from 'claude-code/testing'
 
+import { preview, themedBar } from './bar.ts'
 import { KINDS, backdrop } from './scene.ts'
 import { THEMES } from './themes.ts'
 
@@ -67,6 +68,19 @@ test('every scene keeps to what the app will animate', async () => {
   expect(refused('<svg><filter><feColorMatrix/></filter><style>@media(prefers-color-scheme:light){a{offset-path:path("M0 0")}}</style></svg>')).toEqual(['feColorMatrix', 'media()', 'path()'])
 })
 
+// The app takes an Svg of at most 131072 characters and draws nothing at all for a longer one: no background, and
+// no Looks pane, since the pane's preview picture holds the whole scene.
+test('every picture the mod draws is short enough for the app to take', async () => {
+  const MOST = 131072
+  for (const theme of THEMES) {
+    for (const kind of KINDS) {
+      for (const moving of [true, false]) expect(backdrop(theme, kind, moving).length).toBeLessThanOrEqual(MOST)
+      expect(preview(theme, kind).length).toBeLessThanOrEqual(MOST)
+      expect(themedBar(theme, kind, 0.5).length).toBeLessThanOrEqual(MOST)
+    }
+  }
+})
+
 test('a drawn scene is picked in the pane or by its name, and keeps its lines clear', async ($, on) => {
   const scenes: string[] = []
   const veils: number[] = []
@@ -86,6 +100,14 @@ test('a drawn scene is picked in the pane or by its name, and keeps its lines cl
   expect(scenes.at(-1)).toBe('sunset_on_neon-arcade')
   await $.command.run({ command: 'looks', args: 'retro-sunset city' })
   expect(scenes.at(-1)).toBe('city_on_retro-sunset')
+
+  // the second set is picked the same way: a picture by name, and a fine-lined one keeps the lightest veil
+  await $.command.run({ command: 'looks', args: 'nebula' })
+  expect(scenes.at(-1)).toBe('nebula_on_retro-sunset')
+  expect(veils.at(-1)).toBe(0.45)
+  await $.ui.select({ plugin: 'studio-looks', key: 'background', value: 'circuit' })
+  expect(scenes.at(-1)).toBe('circuit_on_retro-sunset')
+  expect(veils.at(-1)).toBe(0.4)
 
   await ui.unmount()
 })

@@ -2,9 +2,12 @@
  * 'lamp': merging wax. 'soft': soft glows, no filter. 'pixels': squares that fade and dissolve. 'rain': falling symbols.
  * 'grid': a floor grid rolling under a slotted sun. 'sunset': a banded sun setting into water. 'city': towers, neon and rain.
  * 'plotter': blocks hatched line by line. 'weave': a twill woven row by row. 'glyphs': a field of small machines.
+ * 'flock': flocks of square pixels that stream and turn together. 'nebula': clouds of colour along a band of stars.
+ * 'ridges': stacked rows of a trace whose peaks swell and sink. 'circuit': a board of chips with pulses on its traces.
+ * 'tunnel': frames of light coming down a square tunnel.
  * 'plain': the theme's colours with no drawn background.
  */
-export type Background = 'lamp' | 'soft' | 'pixels' | 'rain' | 'grid' | 'sunset' | 'city' | 'plotter' | 'weave' | 'glyphs' | 'plain'
+export type Background = 'lamp' | 'soft' | 'pixels' | 'rain' | 'grid' | 'sunset' | 'city' | 'plotter' | 'weave' | 'glyphs' | 'flock' | 'nebula' | 'ridges' | 'circuit' | 'tunnel' | 'plain'
 /** 'lava': a drawn bar in the style of the background (wax tube, cells, symbols or a neon line). 'native': the app's own progress element in the theme's accent. 'off': no bar. */
 export type BarStyle = 'lava' | 'native' | 'off'
 /** Whether the background moves. 'off' draws the same scene at rest. */

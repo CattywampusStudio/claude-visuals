@@ -22,6 +22,11 @@ const BACKGROUNDS: readonly { value: Background; label: string }[] = [
   { value: 'plotter', label: 'Plotter proof' },
   { value: 'weave', label: 'Loom' },
   { value: 'glyphs', label: 'Glyph field' },
+  { value: 'flock', label: 'Murmuration' },
+  { value: 'nebula', label: 'Nebula' },
+  { value: 'ridges', label: 'Signal ridges' },
+  { value: 'circuit', label: 'Circuit traces' },
+  { value: 'tunnel', label: 'Vector tunnel' },
   { value: 'plain', label: 'Colours only' },
 ]
 // What each drawn background shows, for the picture's description.
@@ -36,7 +41,15 @@ const SHOWS: Record<Exclude<Background, 'plain'>, string> = {
   plotter: 'blocks being hatched line by line, as a pen plotter draws',
   weave: 'a dotted cloth being woven row by row',
   glyphs: 'a field of small mechanical marks',
+  flock: 'flocks of square pixels streaming and turning together over a treeline',
+  nebula: 'clouds of colour along a band of stars',
+  ridges: 'stacked rows of a trace with peaks that swell and sink',
+  circuit: 'a circuit board of chips with pulses running along its traces',
+  tunnel: 'frames of light coming toward you down a square tunnel',
 }
+// Backgrounds of fine lines or small squares, and backgrounds that are pictures: each kind gets its own lightest veil.
+const FINE: readonly Background[] = ['pixels', 'plotter', 'weave', 'glyphs', 'flock', 'ridges', 'circuit']
+const DRAWN: readonly Background[] = ['rain', 'grid', 'sunset', 'city', 'nebula', 'tunnel']
 const BARS: readonly { value: BarStyle; label: string }[] = [
   { value: 'lava', label: 'Matches the background' },
   { value: 'native', label: "The app's own" },
@@ -95,9 +108,9 @@ const look = (c: Choice): ThemeSetArgs => {
   // frosting wipes out (seen in the app: the pixels were very faint), so their panels are clearer and barely blurred.
   // The blur is never 0: read in the app's own styles, panels with no blur are tinted at 70% or more whatever
   // opacity is asked for, and seen in the app that left only a faint glow of the background.
-  // The six drawn scenes are line work too: the three pictures keep a little blur, the three mechanical ones almost none.
-  const fine = c.background === 'pixels' || c.background === 'plotter' || c.background === 'weave' || c.background === 'glyphs'
-  const drawn = c.background === 'rain' || c.background === 'grid' || c.background === 'sunset' || c.background === 'city'
+  // The drawn scenes are line work too: the pictures keep a little blur, the fine-lined ones almost none.
+  const fine = FINE.includes(c.background)
+  const drawn = DRAWN.includes(c.background)
   const light = fine ? { blur: 3, opacity: c.background === 'pixels' ? 0.32 : 0.4 } : drawn ? { blur: 6, opacity: 0.45 } : { blur: 18, opacity: 0.55 }
   // Read in the app's styles: behind the conversation column the app lays a veil of the panel colour whose
   // strength is this opacity, and it draws its own cards there (the summary and next steps, tool cards) with no
@@ -229,7 +242,7 @@ const useBrowsed = async ($: EngineInterface) => {
 
 export const register: Register = on => {
   on('session.start', async ($, e, next) => {
-    await $.command.register({ name: 'looks', description: 'Pick the app look: theme, background and progress bar', argumentHint: '[theme] [lamp|soft|pixels|rain|grid|sunset|city|plotter|weave|glyphs|plain] [off]' })
+    await $.command.register({ name: 'looks', description: 'Pick the app look: theme, background and progress bar', argumentHint: '[theme] [lamp|soft|pixels|rain|grid|sunset|city|plotter|weave|glyphs|flock|nebula|ridges|circuit|tunnel|plain] [off]' })
     const stored = mend(await $.store.get('choice'))
     await update($, choice, () => stored)
     await update($, cleared, () => false)

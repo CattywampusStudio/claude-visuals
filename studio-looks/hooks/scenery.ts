@@ -1,10 +1,11 @@
-// Six drawn scenes: a synthwave grid, a retro sunset, a night city, and three mechanical ones (a plotter, a loom,
-// a field of small machines). Each is one SVG that moves by CSS alone, kept to what the desktop app will animate:
+// Eleven drawn scenes. The first six: a synthwave grid, a retro sunset, a night city, and three mechanical ones
+// (a plotter, a loom, a field of small machines). The second five: a flock of pixels, a nebula, stacked signal
+// ridges, a circuit board and a tunnel. Each is one SVG that moves by CSS alone, kept to what the desktop app will animate:
 // its listed SVG elements, CSS whose every function is a colour, maths, transform, easing or filter function
 // (so no path() and no CSS gradients), `@media (` with the space, nothing fetched.
 import type { Mode, Theme } from './themes.ts'
 
-export type Scenery = 'grid' | 'sunset' | 'city' | 'plotter' | 'weave' | 'glyphs'
+export type Scenery = 'grid' | 'sunset' | 'city' | 'plotter' | 'weave' | 'glyphs' | 'flock' | 'nebula' | 'ridges' | 'circuit' | 'tunnel'
 
 const W = 1600
 const H = 1000
@@ -497,6 +498,336 @@ const glyphs = (theme: Theme, moving: boolean): string => {
   })
 }
 
+type Flock = Record<'at' | 'cx' | 'cy' | 'ax' | 'bx' | 'ay' | 'by' | 'cz' | 'p1' | 'p2' | 'p3' | 'p4' | 'ranks' | 'tail' | 'long' | 'fat', number>
+
+/** Murmuration: two flocks of square pixels that stream, bunch and turn as one, over a pixel treeline at dusk. */
+const flock = (theme: Theme, moving: boolean): string => {
+  const rand = seeded(91)
+  const T = 40, STOPS = 96, GAP = 14
+  // Where a flock's leader is at t (0 to 1 round the loop): a few sines, so the course closes on itself.
+  const course = (a: Flock) => (t: number): [number, number] => {
+    const th = 2 * Math.PI * (t + a.at)
+    return [a.cx + a.ax * Math.sin(th + a.p1) + a.bx * Math.sin(3 * th + a.p2), a.cy + a.ay * Math.sin(2 * th + a.p3) + a.by * Math.cos(3 * th + a.p4) + a.cz * Math.sin(5 * th)]
+  }
+  const FLOCKS: Flock[] = [
+    { at: 0, cx: 800, cy: 400, ax: 560, bx: 170, ay: 210, by: 110, cz: 46, p1: 0.3, p2: 1.1, p3: 0, p4: 0.5, ranks: 44, tail: 3.4, long: 230, fat: 116 },
+    { at: 0.37, cx: 800, cy: 450, ax: -500, bx: 210, ay: 230, by: -90, cz: 38, p1: 2.1, p2: 0.2, p3: 1.3, p4: 2.0, ranks: 30, tail: 2.5, long: 170, fat: 80 },
+  ]
+  let css = '', birds = ''
+  FLOCKS.forEach((f, fi) => {
+    const pos = course(f)
+    // At each stop: where the leader is, how fast it goes (pixels a second, across and down), and its heading.
+    const stops: [number, number, number, number][] = []
+    for (let k = 0; k <= STOPS; k++) {
+      const t = k / STOPS, [x, y] = pos(t), [xa, ya] = pos(t - 0.002), [xb, yb] = pos(t + 0.002)
+      stops.push([x, y, (xb - xa) / (0.004 * T), (yb - ya) / (0.004 * T)])
+    }
+    const top = Math.max(...stops.map(([, , vx, vy]) => Math.hypot(vx, vy)))
+    // The flock keeps its ranks across the way it is heading: longer the faster it goes, wider the slower, and it breathes.
+    const lie = (k: number): [number, number, number, number] => {
+      const [, , vx = 0, vy = 0] = stops[k] ?? [], head = Math.atan2(vy, vx), pace = Math.hypot(vx, vy) / top
+      const breathe = 0.86 + 0.26 * Math.sin(2 * Math.PI * 3 * (k / STOPS) + fi * 2)
+      const along = breathe * (0.8 + 0.7 * pace), across = breathe * (1.25 - 0.5 * pace)
+      return [Math.cos(head) * along, -Math.sin(head) * across, Math.sin(head) * along, Math.cos(head) * across]
+    }
+    // A bird's place is its own (--ox along the flock, --oy across it) laid over the leader's; every bird flies the
+    // same keyframes, each a moment behind the bird ahead, so the flock bends along the course it has flown.
+    const place = (x: number, y: number, a: number, b: number, c: number, d: number) =>
+      `translate(calc(${n1(x)}px + var(--ox)*${n2(a)} + var(--oy)*${n2(b)}),calc(${n1(y)}px + var(--ox)*${n2(c)} + var(--oy)*${n2(d)}))`
+    let fly = ''
+    stops.forEach(([x, y], k) => { fly += `${n2((k / STOPS) * 100)}%{transform:${place(x, y, ...lie(k))}}` })
+    // Held still, the birds behind are set straight back along the leader's heading.
+    const [x0 = 0, y0 = 0, vx0 = 0, vy0 = 0] = stops[0] ?? [], [a0, b0, c0, d0] = lie(0)
+    const rest = place(x0 - 0.5 * f.tail * vx0, y0 - 0.5 * f.tail * vy0, a0 + (f.tail * vx0) / f.long, b0, c0 + (f.tail * vy0) / f.long, d0)
+    css += `.f${fi} path{transform:${rest};animation:fly${fi} ${T}s linear infinite}@keyframes fly${fi}{${fly}}`
+    // The birds stand in ranks a steady gap apart, each nudged off its spot. Evenly spread, the flock passes over
+    // any one place as a steady shade and not as a flicker, which the app would stop.
+    let all = ''
+    for (let i = 0; i < f.ranks; i++) {
+      const half = 10 + f.fat * Math.sin(Math.PI * (0.08 + 0.84 * (i / (f.ranks - 1)))) ** 0.8, rows = Math.max(1, Math.round((2 * half) / GAP))
+      for (let j = 0; j < rows; j++) {
+        const u = Math.max(0, Math.min(1, (i + (rand() - 0.5) * 0.8) / (f.ranks - 1)))
+        const oy = Math.round((j - (rows - 1) / 2 + (i % 2 ? 0.25 : -0.25) + (rand() - 0.5) * 0.6) * GAP)
+        const size = rand() < 0.2 ? 8 : 6, pick = rand(), thin = rand()
+        // the edges of the flock are thinner than its middle
+        if (thin < 0.6 * Math.max(0, (Math.abs(oy) / half - 0.55) / 0.45)) continue
+        const cls = pick < 0.52 ? '' : pick < 0.8 ? ' class="c0"' : pick < 0.93 ? ' class="c1"' : ' class="c3"'
+        all += `<path${cls} d="M${-size / 2} ${-size / 2}h${size}v${size}h${-size}z" style="--ox:${Math.round((0.5 - u) * f.long)}px;--oy:${oy}px;animation-delay:-${n2(T - u * f.tail)}s"/>`
+      }
+    }
+    birds += `<g class="f${fi}">${all}</g>`
+  })
+  // A treeline in steps: two rows of square-topped trees, the nearer one darker.
+  const trees = (base: number, low: number, high: number, step: number, seed: number): string => {
+    const r = seeded(seed)
+    let d = `M-400 ${H + 40}V${base}`, h = low
+    for (let x = -400; x < W + 400; x += step) { h = Math.max(low, Math.min(high, h + (r() - 0.5) * step * 2.6)); d += `V${base - Math.round(h / 8) * 8}h${step}` }
+    return `${d}V${H + 40}Z`
+  }
+  return shell(theme, moving, {
+    // On a pale sky a dark bird swings the brightness of its spot far more than a bright bird does on a dark one,
+    // so the flock is drawn faint there: any stronger and the app reads it as flicker and holds the scene still.
+    dark: '--bird:.95;--dusk:.5',
+    light: '--bird:.25;--dusk:.32',
+    defs:
+      `<linearGradient id="dusk" x1="0" y1="0" x2="0" y2="1"><stop class="s2" offset="0" stop-opacity="0"/><stop class="s2" offset=".7" stop-opacity=".55"/><stop class="s3" offset="1" stop-opacity=".8"/></linearGradient>` +
+      `<radialGradient id="low"><stop class="s3" offset="0" stop-opacity=".7"/><stop class="s3" offset=".4" stop-opacity=".25"/><stop class="s3" offset="1" stop-opacity="0"/></radialGradient>`,
+    css:
+      `.dusk{opacity:var(--dusk)}.birds{opacity:var(--bird);fill:var(--text)}` +
+      `.far{fill:color-mix(in srgb,var(--ground) 62%,var(--w2))}.near{fill:color-mix(in srgb,var(--ground) 86%,var(--w2))}` +
+      `.low{animation:lowsun 16s ease-in-out infinite alternate}@keyframes lowsun{from{opacity:.6}to{opacity:1}}` +
+      css,
+    body:
+      `<rect class="dusk" x="-400" y="300" width="${W + 800}" height="${H - 300 + 400}" fill="url(#dusk)"/>` +
+      `<circle class="low" cx="1140" cy="880" r="330" fill="url(#low)"/>` +
+      `<path class="far" d="${trees(900, 20, 96, 24, 7)}"/><path class="near" d="${trees(948, 12, 70, 16, 19)}"/>` +
+      `<g class="birds">${birds}</g>`,
+  })
+}
+
+/** Nebula: clouds of the theme's colours along a band of sky, dark lanes through them, a bright core, drifting stars. */
+const nebula = (theme: Theme, moving: boolean): string => {
+  const rand = seeded(113)
+  const TILT = -24, cos = Math.cos((TILT * Math.PI) / 180), sin = Math.sin((TILT * Math.PI) / 180)
+  // a point on the band: u along it (-1 to 1), v across it
+  const band = (u: number, v: number): [number, number] => [Math.round(800 + u * 760 * cos - v * sin), Math.round(500 + u * 760 * sin + v * cos)]
+  const gauss = () => (rand() + rand() + rand() - 1.5) / 1.5
+
+  let stars = ''
+  ;([[170, 0.5, 1.1, 0.5], [90, 0.8, 1.5, 0.7], [36, 1.2, 2.1, 0.95]] as [number, number, number, number][]).forEach(([count, small, big, bright], layer) => {
+    let dots = ''
+    for (let i = 0; i < count; i++) {
+      const tw = i % 5 === 0
+      dots += `<circle${tw ? ' class="tw"' : ''} cx="${Math.round(rand() * (W + 200) - 100)}" cy="${Math.round(rand() * (H + 120) - 60)}" r="${n1(small + rand() * (big - small))}" style="opacity:${n2(bright * (0.45 + rand() * 0.55))}${tw ? `;animation-duration:${n1(3 + rand() * 6)}s;animation-delay:-${n1(rand() * 9)}s` : ''}"/>`
+    }
+    stars += `<g class="t dr${layer}">${dots}</g>`
+  })
+
+  let clouds = ''
+  for (let i = 0; i < 30; i++) {
+    const u = (rand() * 2 - 1) * 1.12, [x, y] = band(u, gauss() * 200)
+    const wide = 1 - Math.min(1, Math.abs(u)) * 0.38
+    const rx = Math.round((170 + rand() * 300) * wide), ry = Math.round((80 + rand() * 150) * wide)
+    clouds += `<g transform="translate(${x} ${y}) rotate(${Math.round(TILT + (rand() - 0.5) * 70)})"><ellipse class="cl" rx="${rx}" ry="${ry}" fill="url(#n${i % 4})" style="--dx:${Math.round((rand() - 0.5) * 70)}px;--dy:${Math.round((rand() - 0.5) * 44)}px;--lo:${n2(0.45 + rand() * 0.25)};opacity:${n2(0.75)};animation-duration:${Math.round(26 + rand() * 40)}s;animation-delay:-${Math.round(rand() * 60)}s"/></g>`
+  }
+  // thin streaks that lie along the band give the clouds a grain
+  const sheet = (count: number, seedCls: string): string => {
+    let s = ''
+    for (let i = 0; i < count; i++) {
+      const u = (rand() * 2 - 1) * 1.05, [x, y] = band(u, gauss() * 150)
+      s += `<ellipse transform="translate(${x} ${y}) rotate(${Math.round(TILT + (rand() - 0.5) * 50)})" rx="${Math.round(140 + rand() * 260)}" ry="${Math.round(8 + rand() * 20)}" fill="url(#n${Math.floor(rand() * 4)})" opacity="${n2(0.3 + rand() * 0.3)}"/>`
+    }
+    return `<g class="${seedCls}">${s}</g>`
+  }
+  let lanes = ''
+  for (let i = 0; i < 9; i++) {
+    const u = (rand() * 2 - 1) * 0.95, [x, y] = band(u, (rand() - 0.5) * 170)
+    lanes += `<g transform="translate(${x} ${y}) rotate(${Math.round(TILT + (rand() - 0.5) * 36)})"><ellipse class="ln" rx="${Math.round(200 + rand() * 240)}" ry="${Math.round(26 + rand() * 44)}" fill="url(#dk)" style="--dx:${Math.round((rand() - 0.5) * 80)}px;animation-duration:${Math.round(40 + rand() * 40)}s;animation-delay:-${Math.round(rand() * 60)}s"/></g>`
+  }
+  let flares = ''
+  for (let i = 0; i < 9; i++) {
+    const x = Math.round(80 + rand() * (W - 160)), y = Math.round(60 + rand() * (H - 120)), len = Math.round(14 + rand() * 22)
+    flares += `<g transform="translate(${x} ${y})"><g class="fl" style="animation-duration:${n1(4 + rand() * 5)}s;animation-delay:-${n1(rand() * 8)}s"><path d="M${-len} 0H${len}M0 ${-len}V${len}"/><circle r="${n1(1.8 + rand() * 1.4)}"/></g></g>`
+  }
+  const [cx, cy] = band(-0.08, 0)
+  return shell(theme, moving, {
+    dark: '--neb:1;--star:1;--hot:var(--text)',
+    light: '--neb:.62;--star:.55;--hot:var(--w3)',
+    defs:
+      [0, 1, 2, 3].map(i => `<radialGradient id="n${i}"><stop class="s${i}" offset="0" stop-opacity=".56"/><stop class="s${i}" offset=".45" stop-opacity=".24"/><stop class="s${i}" offset="1" stop-opacity="0"/></radialGradient>`).join('') +
+      `<radialGradient id="dk"><stop class="sg" offset="0" stop-opacity=".85"/><stop class="sg" offset=".6" stop-opacity=".4"/><stop class="sg" offset="1" stop-opacity="0"/></radialGradient>` +
+      `<radialGradient id="core"><stop offset="0" stop-color="var(--hot)" stop-opacity=".75"/><stop class="s3" offset=".3" stop-opacity=".4"/><stop class="s3" offset="1" stop-opacity="0"/></radialGradient>` +
+      `<linearGradient id="trail" x1="0" y1="0" x2="1" y2="0"><stop offset="0" stop-color="var(--text)" stop-opacity="1"/><stop offset="1" stop-color="var(--text)" stop-opacity="0"/></linearGradient>`,
+    css:
+      `.sky{opacity:var(--star)}.neb{opacity:var(--neb);transform-origin:800px 500px;animation:wheel 200s ease-in-out infinite alternate}@keyframes wheel{from{transform:rotate(-3deg) scale(1)}to{transform:rotate(4deg) scale(1.06)}}` +
+      `.tw{animation:glint 6s ease-in-out infinite alternate}@keyframes glint{from{opacity:.1}to{opacity:1}}` +
+      `.dr0{animation:drift0 150s linear infinite alternate}@keyframes drift0{from{transform:translate(-18px,6px)}to{transform:translate(18px,-6px)}}` +
+      `.dr1{animation:drift1 120s linear infinite alternate}@keyframes drift1{from{transform:translate(-34px,12px)}to{transform:translate(34px,-12px)}}` +
+      `.dr2{animation:drift2 90s linear infinite alternate}@keyframes drift2{from{transform:translate(-56px,20px)}to{transform:translate(56px,-20px)}}` +
+      `.cl{animation:billow 40s ease-in-out infinite alternate}@keyframes billow{from{transform:translate(calc(var(--dx)*-1),calc(var(--dy)*-1)) scale(.92);opacity:var(--lo)}to{transform:translate(var(--dx),var(--dy)) scale(1.1);opacity:.95}}` +
+      `.ln{animation:lane 60s ease-in-out infinite alternate}@keyframes lane{from{transform:translate(calc(var(--dx)*-1),0)}to{transform:translate(var(--dx),0)}}` +
+      `.sh0{animation:shear0 70s ease-in-out infinite alternate}@keyframes shear0{from{transform:translate(-30px,10px)}to{transform:translate(30px,-10px)}}` +
+      `.sh1{animation:shear1 95s ease-in-out infinite alternate}@keyframes shear1{from{transform:translate(26px,-12px)}to{transform:translate(-26px,12px)}}` +
+      `.core{animation:pulse 11s ease-in-out infinite alternate}@keyframes pulse{from{opacity:.6}to{opacity:1}}` +
+      `.fl{fill:var(--text);stroke:var(--text);stroke-width:1;stroke-linecap:round;animation:flare 6s ease-in-out infinite alternate}@keyframes flare{from{transform:scale(.45);opacity:.35}to{transform:scale(1);opacity:1}}` +
+      `.shoot{animation:shoot 19s linear infinite}@keyframes shoot{0%{transform:translate(1380px,-40px);opacity:0}1%{opacity:1}5%{transform:translate(620px,250px);opacity:0}100%{transform:translate(620px,250px);opacity:0}}`,
+    body:
+      `<g class="sky">${stars}</g>` +
+      `<g class="neb">${clouds}${sheet(16, 'sh0')}${sheet(14, 'sh1')}${lanes}` +
+      `<ellipse class="core" transform="translate(${cx} ${cy}) rotate(${TILT})" rx="190" ry="110" fill="url(#core)"/></g>` +
+      `<g class="sky">${flares}</g>` +
+      `<g class="shoot" style="transform:translate(620px,250px);opacity:0"><line x1="150" y1="-64" x2="0" y2="0" stroke="url(#trail)" stroke-width="2.4" stroke-linecap="round"/></g>`,
+  })
+}
+
+/** Signal ridges: rows of a trace stacked up the window, each row's peaks swelling and sinking as a wave passes along it. */
+const ridges = (theme: Theme, moving: boolean): string => {
+  const rand = seeded(131)
+  const ROWS = 25, TOP = 300, GAP = 26
+  const env = (x: number) => Math.exp(-(((x - 800) / 370) ** 2))
+  let rows = ''
+  for (let r = 0; r < ROWS; r++) {
+    const y = TOP + r * GAP
+    // the flat of the row, with the small shake of a pen
+    let base = `M-200 ${y}`
+    for (let x = -188; x <= W + 200; x += 12) { const shake = (rand() - 0.5) * 3; if ((x + 188) % 24) base += `L${x} ${n1(y + shake)}` }
+    let bumps = ''
+    const count = 7 + Math.floor(rand() * 3)
+    const xs = Array.from({ length: count }, () => 800 + (rand() + rand() + rand() - 1.5) * 470).sort((a, b) => a - b)
+    for (const x of xs) {
+      const half = 34 + rand() * 78, tall = (16 + 150 * env(x)) * (0.45 + rand() * 0.75)
+      let d = `M${n1(-half)} 0`
+      for (let k = -9; k <= 9; k++) { const u = k / 10; d += `L${n1(u * half)} ${n1(-tall * Math.exp(-((u * 2.4) ** 2)) * (1 + (rand() - 0.5) * 0.14))}` }
+      d += `L${n1(half)} 0`
+      const secs = n1(3 + rand() * 4.5)
+      bumps += `<g transform="translate(${Math.round(x)} ${y})"><path class="rg" d="${d}" style="--dx:${Math.round((rand() - 0.5) * 36)}px;--lo:${n2(0.15 + rand() * 0.3)};transform:scaleY(.72);animation-duration:${secs}s;animation-delay:-${n2((x / W) * 5 + r * 0.42 + rand())}s"/></g>`
+    }
+    const mix = Math.round((1 - r / (ROWS - 1)) * 100)
+    rows += `<g style="stroke:color-mix(in srgb,var(--w0) ${mix}%,var(--w1));opacity:${n2(0.5 + 0.5 * (r / (ROWS - 1)))}"><path d="${base}"/>${bumps}</g>`
+  }
+  let ticks = ''
+  for (let x = 100; x < W; x += 100) ticks += `<path d="M${x} 956v${x % 500 === 0 ? 16 : 8}"/>`
+  return shell(theme, moving, {
+    dark: '--ink:.95',
+    light: '--ink:.8',
+    defs: `<radialGradient id="rise"><stop class="s2" offset="0" stop-opacity=".38"/><stop class="s2" offset="1" stop-opacity="0"/></radialGradient>`,
+    css:
+      `.rows{opacity:var(--ink);fill:none;stroke-width:1.8;stroke-linejoin:round;stroke-linecap:round}` +
+      `.rg{fill:var(--ground);transform-box:fill-box;transform-origin:50% 100%;animation:swell 5s ease-in-out infinite alternate}` +
+      `@keyframes swell{from{transform:translate(calc(var(--dx)*-1),0) scaleY(var(--lo))}to{transform:translate(var(--dx),0) scaleY(1)}}` +
+      `.scan{animation:scan 18s linear infinite}@keyframes scan{from{transform:translateX(-80px)}to{transform:translateX(1680px)}}` +
+      `.tk{stroke:var(--text);stroke-width:1.5;opacity:.3}`,
+    body:
+      `<ellipse cx="800" cy="560" rx="760" ry="430" fill="url(#rise)"/>` +
+      `<g class="rows">${rows}</g>` +
+      `<g class="tk">${ticks}<path d="M60 956H1540"/></g>` +
+      `<g class="scan" style="transform:translateX(520px)"><rect class="t" x="0" y="250" width="1.5" height="706" opacity=".22"/><rect class="c3" x="-4" y="951" width="9.5" height="9.5"/></g>`,
+  })
+}
+
+/** Circuit traces: a board of chips joined by bundles of traces, with pulses of the theme's colours running along them. */
+const circuit = (theme: Theme, moving: boolean): string => {
+  const rand = seeded(157)
+  const P = 16, C = 36
+  const CHIPS: [number, number, number, number, string][] = [[640, 360, 320, 280, 'U1'], [180, 160, 200, 140, 'U2'], [1220, 140, 220, 160, 'U3'], [200, 700, 220, 160, 'U4'], [1180, 690, 220, 160, 'U5']]
+  const lanes: [number, number][][] = []
+  // across then up or down, the corner cut at 45 degrees; lanes of a bundle keep their distance through the turn
+  const hv = (x0: number, y0: number, x1: number, y2: number, sx: number, sy: number, n: number) => { for (let k = 0; k < n; k++) { const y = y0 + sy * k * P, x = x1 - sx * k * P; lanes.push([[x0, y], [x - sx * C, y], [x, y + sy * C], [x, y2]]) } }
+  const straight = (x0: number, y0: number, x1: number, y1: number, dx: number, dy: number, n: number) => { for (let k = 0; k < n; k++) lanes.push([[x0 + dx * k, y0 + dy * k], [x1 + dx * k, y1 + dy * k]]) }
+  hv(380, 190, 760, 360, 1, 1, 5)
+  hv(1220, 180, 860, 360, -1, 1, 5)
+  hv(420, 800, 740, 640, 1, -1, 5)
+  hv(1180, 800, 860, 640, -1, -1, 5)
+  hv(960, 524, 1548, -60, 1, -1, 4)
+  straight(640, 452, -60, 452, 0, P, 4)
+  straight(212, 160, 212, -60, P, 0, 6)
+  straight(180, 196, -60, 196, 0, P, 4)
+  straight(200, 740, -60, 740, 0, P, 5)
+  straight(232, 860, 232, 1060, P, 0, 6)
+  straight(1400, 720, 1660, 720, 0, P, 6)
+  straight(1212, 850, 1212, 1060, P, 0, 5)
+  straight(1440, 180, 1660, 180, 0, P, 4)
+  straight(1252, 140, 1252, -60, P, 0, 7)
+  straight(736, 640, 736, 1060, P, 0, 3)
+  straight(832, 360, 832, -60, P, 0, 3)
+
+  const len = (pts: [number, number][]) => pts.slice(1).reduce((s, p, i) => { const q = pts[i] ?? p; return s + Math.hypot(p[0] - q[0], p[1] - q[1]) }, 0)
+  let traces = '', pulses = '', ends = ''
+  lanes.forEach((pts, i) => {
+    const points = pts.map(p => p.join(',')).join(' ')
+    traces += `<polyline points="${points}"/>`
+    if (rand() < 0.62) {
+      const secs = n1(Math.max(2.4, len(pts) / (150 + rand() * 120)))
+      pulses += `<polyline class="pu k${[0, 1, 3, 0][i % 4]}" pathLength="100" points="${points}" style="stroke-dashoffset:${Math.round(rand() * 100)};animation-duration:${secs}s;animation-delay:-${n1(rand() * secs)}s${rand() < 0.4 ? ';animation-direction:reverse' : ''}"/>`
+    }
+  })
+  let chips = ''
+  for (const [x, y, w, h, name] of CHIPS) {
+    let pins = ''
+    for (let px = x + 12; px < x + w - 8; px += P) pins += `<rect x="${px - 3}" y="${y - 9}" width="6" height="9"/><rect x="${px - 3}" y="${y + h}" width="6" height="9"/>`
+    for (let py = y + 12; py < y + h - 8; py += P) pins += `<rect x="${x - 9}" y="${py - 3}" width="9" height="6"/><rect x="${x + w}" y="${py - 3}" width="9" height="6"/>`
+    chips += `<g class="pin">${pins}</g><rect class="chip" x="${x}" y="${y}" width="${w}" height="${h}" rx="8"/><circle class="dot" cx="${x + 18}" cy="${y + 18}" r="5"/><text class="lb" x="${x + w - 14}" y="${y + h - 14}" text-anchor="end">${name}</text>`
+  }
+  // small parts in the open board: a body between two pads, with a name beside it
+  let parts = ''
+  const SPOTS: [number, number][] = [[470, 330], [540, 590], [1060, 420], [1090, 600], [470, 930], [1010, 900], [1500, 400], [90, 400], [90, 560], [1040, 80], [520, 90], [1500, 900], [330, 600], [1300, 420], [1420, 560]]
+  SPOTS.forEach(([x, y], i) => {
+    const up = i % 3 === 0
+    parts += `<g transform="translate(${x} ${y})${up ? ' rotate(90)' : ''}"><rect class="pad" x="-22" y="-7" width="10" height="14"/><rect class="pad" x="12" y="-7" width="10" height="14"/><rect class="body" x="-12" y="-6" width="24" height="12" rx="2"/></g><text class="lb sm" x="${x + (up ? 14 : -22)}" y="${y + (up ? 4 : -14)}">${i % 2 ? 'C' : 'R'}${i + 1}</text>`
+  })
+  for (let i = 0; i < 16; i++) ends += `<circle cx="${Math.round(60 + rand() * 1480)}" cy="${([48, 952, 320, 660][i % 4] ?? 48) + Math.round((rand() - 0.5) * 30)}" r="6"/>`
+  return shell(theme, moving, {
+    dark: '--trace:.6;--board:.16',
+    light: '--trace:.7;--board:.2',
+    defs:
+      `<pattern id="holes" width="40" height="40" patternUnits="userSpaceOnUse"><circle class="t" cx="20" cy="20" r="1.4"/></pattern>` +
+      `<radialGradient id="die"><stop class="s0" offset="0" stop-opacity=".8"/><stop class="s0" offset="1" stop-opacity="0"/></radialGradient>`,
+    css:
+      `.trc{fill:none;stroke:color-mix(in srgb,var(--w2) 62%,var(--ground));stroke-width:2.4;stroke-linejoin:round;opacity:var(--trace)}` +
+      `.pu{fill:none;stroke-width:3.4;stroke-linecap:round;stroke-dasharray:5 95;animation:run 4s linear infinite}@keyframes run{from{stroke-dashoffset:100}to{stroke-dashoffset:0}}` +
+      `.chip{fill:color-mix(in srgb,var(--ground) 86%,var(--text));stroke:color-mix(in srgb,var(--w2) 70%,var(--ground));stroke-width:2}` +
+      `.pin rect,.pad{fill:color-mix(in srgb,var(--w3) 55%,var(--ground))}.body{fill:color-mix(in srgb,var(--ground) 74%,var(--text))}` +
+      `.dot{fill:none;stroke:color-mix(in srgb,var(--text) 40%,var(--ground));stroke-width:1.5}` +
+      `.lb{font:600 13px ui-monospace,Menlo,Monaco,monospace;fill:color-mix(in srgb,var(--text) 46%,var(--ground))}.sm{font-size:10px}` +
+      `.via{fill:var(--ground);stroke:color-mix(in srgb,var(--w2) 62%,var(--ground));stroke-width:2.4;opacity:var(--trace)}` +
+      `.die{animation:think 5s ease-in-out infinite alternate}@keyframes think{from{opacity:.35}to{opacity:1}}` +
+      `.led{animation:led 2.6s steps(1) infinite}@keyframes led{0%{opacity:1}50%{opacity:.25}}`,
+    body:
+      `<rect x="-400" y="-400" width="${W + 800}" height="${H + 800}" fill="url(#holes)" style="opacity:var(--board)"/>` +
+      `<g class="trc">${traces}</g><g class="via">${ends}</g>${parts}${chips}` +
+      `<rect x="716" y="426" width="168" height="148" rx="6" style="fill:color-mix(in srgb,var(--ground) 70%,var(--text))"/><circle class="die" cx="800" cy="500" r="74" fill="url(#die)"/>` +
+      `<circle class="led c1" cx="356" cy="184" r="4"/><circle class="led c3" cx="1416" cy="166" r="4" style="animation-delay:-1.1s"/><circle class="led c0" cx="396" cy="724" r="4" style="animation-delay:-.6s"/><circle class="led c1" cx="1376" cy="714" r="4" style="animation-delay:-1.7s"/>` +
+      `<g>${pulses}</g>`,
+  })
+}
+
+/** Vector tunnel: frames of light coming toward you down a square tunnel, rails along its corners and walls, a glow at the far end. */
+const tunnel = (theme: Theme, moving: boolean): string => {
+  const VX = 800, VY = 500, RINGS = 24, T = 10, FAR = 0.07, NEAR = 1.7
+  // how far a frame has faded in at p of its way from the far end to past you, and how big it looks there
+  const fade = (p: number) => n2(Math.min(1, p * 3.2))
+  const size = (p: number) => 1 / (1 / FAR - (1 / FAR - 1 / NEAR) * p)
+  const stops = [0, 0.2, 0.4, 0.55, 0.67, 0.76, 0.83, 0.88, 0.92, 0.95, 0.97, 0.985, 1]
+  const come = stops.map(p => `${n1(p * 100)}%{transform:scale(${size(p).toFixed(4)});opacity:${fade(p)}}`).join('')
+  let rings = ''
+  for (let i = 0; i < RINGS; i++) {
+    const p = i / RINGS, gate = i % 4 === 0
+    rings += `<rect class="ring ${gate ? 'gate k0' : i % 2 ? 'k1' : 'k2'}" x="-800" y="-500" width="1600" height="1000" rx="70" style="transform:scale(${size(p).toFixed(4)});opacity:${fade(p)};animation-delay:calc(var(--slow)*-${n2(p * T)}s)"/>`
+  }
+  // rails from the far end out past the corners and along the walls
+  let rails = ''
+  const far = 1600 * FAR, reach = 1.9
+  const edge: [number, number][] = [[-1, -1], [-0.5, -1], [0, -1], [0.5, -1], [1, -1], [1, -0.5], [1, 0], [1, 0.5], [1, 1], [0.5, 1], [0, 1], [-0.5, 1], [-1, 1], [-1, 0.5], [-1, 0], [-1, -0.5]]
+  for (const [ex, ey] of edge) rails += `<line class="${Math.abs(ex) === 1 && Math.abs(ey) === 1 ? 'cn' : ''}" x1="${n1(ex * far / 2)}" y1="${n1(ey * far * 0.3125)}" x2="${ex * 800 * reach}" y2="${ey * 500 * reach}"/>`
+  let stars = ''
+  const rand = seeded(171)
+  for (let i = 0; i < 26; i++) {
+    const ang = rand() * 2 * Math.PI, secs = n1(3 + rand() * 4)
+    stars += `<g transform="rotate(${Math.round((ang * 180) / Math.PI)})"><rect class="sp c${[0, 1, 3][i % 3]}" x="0" y="-1.5" width="26" height="3" style="transform:translateX(${Math.round(120 + rand() * 500)}px) scaleX(.6);animation-duration:${secs}s;animation-delay:-${n1(rand() * secs)}s"/></g>`
+  }
+  return shell(theme, moving, {
+    // On a pale ground each frame or streak going by darkens its spot enough for the app to count it, and more than
+    // three counts a second in one spot is flicker to it, which holds the scene still. So there the frames come
+    // slower, every other one is left out, and the streaks are faint.
+    dark: '--line:.9;--rail:.34;--hot:var(--text);--slow:1;--odd:1;--streak:1',
+    light: '--line:.75;--rail:.4;--hot:var(--w3);--slow:1.6;--odd:0;--streak:.3',
+    defs:
+      `<radialGradient id="end"><stop offset="0" stop-color="var(--hot)" stop-opacity=".9"/><stop class="s0" offset=".25" stop-opacity=".6"/><stop class="s2" offset=".6" stop-opacity=".22"/><stop class="s2" offset="1" stop-opacity="0"/></radialGradient>` +
+      `<radialGradient id="shade"><stop class="sg" offset=".55" stop-opacity="0"/><stop class="sg" offset="1" stop-opacity=".7"/></radialGradient>`,
+    css:
+      `.sway{animation:sway 26s ease-in-out infinite alternate}@keyframes sway{from{transform:translate(${VX - 46}px,${VY + 18}px)}to{transform:translate(${VX + 46}px,${VY - 18}px)}}` +
+      `.ring{fill:none;stroke-width:5;animation:come calc(var(--slow)*${T}s) linear infinite}.ring:nth-child(2n){stroke-opacity:var(--odd)}@keyframes come{${come}}.gate{stroke-width:11}` +
+      `.frames{opacity:var(--line)}.rails{stroke:var(--w2);stroke-width:1.6;opacity:var(--rail)}.cn{stroke-width:3}` +
+      `.end{animation:far 7s ease-in-out infinite alternate}@keyframes far{from{transform:scale(.8);opacity:.7}to{transform:scale(1.15);opacity:1}}` +
+      `.sp{fill-opacity:var(--streak);animation:streak 5s linear infinite}@keyframes streak{from{transform:translateX(40px) scaleX(.15);opacity:0}15%{opacity:.9}to{transform:translateX(1100px) scaleX(3.4);opacity:.9}}`,
+    body:
+      `<g class="sway" style="transform:translate(${VX}px,${VY}px)">` +
+      `<circle class="end" r="260" fill="url(#end)"/>` +
+      `<g class="rails">${rails}</g><g>${stars}</g><g class="frames">${rings}</g></g>` +
+      `<rect x="-400" y="-400" width="${W + 800}" height="${H + 800}" fill="url(#shade)"/>`,
+  })
+}
+
 /** Each scene by name: (theme, moving) to one SVG. */
-export const SCENERY: Readonly<Record<Scenery, (theme: Theme, moving: boolean) => string>> = { grid, sunset, city, plotter, weave, glyphs }
-export const SCENERIES: readonly Scenery[] = ['grid', 'sunset', 'city', 'plotter', 'weave', 'glyphs']
+export const SCENERY: Readonly<Record<Scenery, (theme: Theme, moving: boolean) => string>> = { grid, sunset, city, plotter, weave, glyphs, flock, nebula, ridges, circuit, tunnel }
+export const SCENERIES: readonly Scenery[] = ['grid', 'sunset', 'city', 'plotter', 'weave', 'glyphs', 'flock', 'nebula', 'ridges', 'circuit', 'tunnel']

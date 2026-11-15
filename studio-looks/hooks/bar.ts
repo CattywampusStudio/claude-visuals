@@ -160,8 +160,8 @@ export const neonBar = (theme: Theme, fraction: number | null): string => {
 }
 
 const isScenery = (background: string): background is Scenery => Object.hasOwn(SCENERY, background)
-/** The mechanical scenes take the stepped cells; the three pictures take the neon line. */
-const isMechanical = (background: string) => background === 'pixels' || background === 'plotter' || background === 'weave' || background === 'glyphs'
+/** The scenes of squares and fine lines take the stepped cells; the pictures take the neon line. */
+const isMechanical = (background: string) => ['pixels', 'plotter', 'weave', 'glyphs', 'flock', 'ridges', 'circuit'].includes(background)
 
 /** The progress bar in the style of the background in use: cells, symbols, a neon line, or the wax tube. */
 export const themedBar = (theme: Theme, background: string, fraction: number | null): string =>
