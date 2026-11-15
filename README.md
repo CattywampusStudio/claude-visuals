@@ -2,6 +2,9 @@
 
 Mods that change how the Claude desktop app looks. There is one so far, **studio-looks**: pick a theme and a moving background for the whole app from a pane beside the conversation.
 
+> [!NOTE]
+> This is an unofficial project, made for fun by Cattywampus Studio. It is not affiliated with, endorsed by or supported by Anthropic. Claude and Claude Code are Anthropic's products.
+
 <img src="images/grid.svg" width="100%" alt="The Grid horizon background in the Synthwave theme: a floor grid rolling toward the viewer under a slotted sun, with wire mountains and stars">
 
 ## Install
@@ -59,6 +62,25 @@ claude plugin marketplace update claude-visuals
 claude plugin update studio-looks@claude-visuals
 ```
 
+## Remove it
+
+1. In a session, run `/looks off`, so the app is back in its own colours before the mod goes.
+2. In a terminal, uninstall the mod:
+
+```
+claude plugin uninstall studio-looks@claude-visuals
+```
+
+3. To forget this repository as a source of mods as well:
+
+```
+claude plugin marketplace remove claude-visuals
+```
+
+Then start a new session. The mod changes none of the app's own settings, so there is nothing else to undo. One small file may stay behind: your saved pick, in `~/.claude/plugins/store/`, with a name that starts with `studio-looks`. Delete it if you want no trace.
+
+To switch the mod off without removing it, run `claude plugin disable studio-looks@claude-visuals`; `enable` in place of `disable` brings it back.
+
 ## Change it or build your own
 
 The mod's code is in the `studio-looks` folder of this repository. With a copy of the repository, run these from its top folder:
@@ -74,8 +96,15 @@ One thing worth knowing before drawing a background of your own: the app animate
 
 ## Credits and licence
 
-MIT, see [LICENSE](LICENSE).
+Made by Cattywampus Studio as a fun side project. We have no connection to Anthropic, and Anthropic does not support this mod: if something breaks, open an issue in this repository.
+
+**Our own work is under the MIT licence**, see [LICENSE](LICENSE). That is everything in this repository except the two files named below.
+
+**Two files are Anthropic's, not ours, and the MIT licence does not cover them:**
+
+- `studio-looks/hooks/make-colors.js`
+- `studio-looks/hooks/make-colors.d.ts`
+
+They are the colour helper that comes with Claude Code's plugin-authoring skill. That skill tells a mod's author to copy the two files into the mod and leave them as they are, and that is what we did: they are here unchanged. They remain Anthropic's, under Anthropic's own terms. We claim no rights in them and give none. The [notice](studio-looks/NOTICE.md) kept beside the mod says the same.
 
 The plotter, loom and glyph backgrounds took their idea, mechanical motion in steps, from the industrial side-project style of @tol__is. The drawings and marks here are our own.
-
-The colour helper inside the mod (`make-colors`) is Claude Code's own, copied unchanged from its plugin-authoring skill as that skill instructs. It is Anthropic's and is not covered by this repository's licence.
