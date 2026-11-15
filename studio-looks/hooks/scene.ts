@@ -1,8 +1,7 @@
-// The full-window lava lamp for any theme: four wash colours as wax that rises,
-// sinks and merges through a blur-then-threshold "goo" filter, a glow from the
-// base. One SVG serves both modes: its colours are CSS variables that a
-// prefers-color-scheme rule swaps. No logo or wording. Two more scenes follow the
-// lamp: dissolving pixels and falling symbols. Six more drawn scenes are in scenery.ts.
+// The backgrounds behind the chat. Here: the lava lamp (four wash colours as wax that rises, sinks and merges
+// through a blur-then-threshold "goo" filter, with a glow from the base), its filter-free soft version, dissolving
+// pixels and falling symbols. Six more drawn scenes are in scenery.ts. One SVG serves both modes: its colours are
+// CSS variables that a prefers-color-scheme rule swaps.
 import { SCENERIES, SCENERY, seeded } from './scenery.ts'
 import type { Scenery } from './scenery.ts'
 import type { Mode, Theme } from './themes.ts'

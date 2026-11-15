@@ -5,7 +5,7 @@
  * 'plain': the theme's colours with no drawn background.
  */
 export type Background = 'lamp' | 'soft' | 'pixels' | 'rain' | 'grid' | 'sunset' | 'city' | 'plotter' | 'weave' | 'glyphs' | 'plain'
-/** 'lava': a drawn bar in the style of the background (wax tube, pixel cells or symbols). 'native': the app's own progress element in the theme's accent. 'off': no bar. */
+/** 'lava': a drawn bar in the style of the background (wax tube, cells, symbols or a neon line). 'native': the app's own progress element in the theme's accent. 'off': no bar. */
 export type BarStyle = 'lava' | 'native' | 'off'
 /** Whether the background moves. 'off' draws the same scene at rest. */
 export type Motion = 'on' | 'off'

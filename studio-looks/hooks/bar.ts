@@ -1,5 +1,5 @@
-// Drawn pieces that are not the backdrop: the lava progress bar and the picker's
-// swatch strip. Both follow the light or dark setting the same way the scene does.
+// Drawn pieces that are not the backdrop: the progress bars, one for each family of background,
+// and the picker's preview. All follow the light or dark setting the same way the scenes do.
 import { SCENERY } from './scenery.ts'
 import type { Scenery } from './scenery.ts'
 import type { Mode, Theme } from './themes.ts'
@@ -166,16 +166,6 @@ const isMechanical = (background: string) => background === 'pixels' || backgrou
 /** The progress bar in the style of the background in use: cells, symbols, a neon line, or the wax tube. */
 export const themedBar = (theme: Theme, background: string, fraction: number | null): string =>
   isMechanical(background) ? pixelBar(theme, fraction) : background === 'rain' ? symbolBar(theme, fraction) : isScenery(background) ? neonBar(theme, fraction) : lavaBar(theme, fraction)
-
-/** The look at a glance for the picker: the ground with the four wax colours on it. */
-export const swatch = (theme: Theme): string =>
-  `<svg xmlns="http://www.w3.org/2000/svg" width="320" height="56" viewBox="0 0 320 56">` +
-  `<style>svg{${vars(theme.dark)};--card:${theme.dark.card}}@media(prefers-color-scheme:light){svg{${vars(theme.light)};--card:${theme.light.card}}}` +
-  `.g{fill:var(--ground);stroke:var(--text);stroke-opacity:.2}.k{fill:var(--card)}${[0, 1, 2, 3].map(i => `.c${i}{fill:var(--w${i})}`).join('')}.t{fill:var(--text);font:600 13px system-ui,sans-serif}</style>` +
-  `<rect class="g" x=".5" y=".5" width="319" height="55" rx="12"/>` +
-  `<rect class="k" x="10" y="10" width="124" height="36" rx="8"/><text class="t" x="22" y="33">Aa 123</text>` +
-  [0, 1, 2, 3].map(i => `<circle class="c${i}" cx="${166 + i * 40}" cy="28" r="15"/>`).join('') +
-  `</svg>`
 
 /**
  * A small picture of the app in a theme, for browsing before applying: the page
