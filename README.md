@@ -1,0 +1,65 @@
+# claude-visuals
+
+Mods that change how the Claude desktop app looks.
+
+## studio-looks
+
+Pick the app's look from a collection of fifteen themes. A look is three things you can mix:
+
+- **Colours** for the whole app, in light and dark.
+- **A background behind the conversation**: a lava lamp, soft glows, dissolving pixels, falling symbols, or colours only. It can move or sit still.
+- **A progress bar above the message box** that follows Claude's task list, drawn to match the background.
+
+Themes: Neon Arcade, Midnight Pop, Workshop, Playground, Dusk, Backstage, Ember, Deep Sea, Orchard, Ink, Green Rain, Cipher, Pixel Dust, Static, Sunset Blocks.
+
+### Install
+
+At the prompt of a Claude Code terminal session:
+
+```
+/plugin install studio-looks --marketplace CattywampusStudio/claude-visuals
+```
+
+From a shell:
+
+```
+claude plugin install studio-looks --marketplace CattywampusStudio/claude-visuals
+```
+
+In the desktop app, where `/plugin` does not run: click **+** next to the prompt box, then **Plugins**, **Add marketplace** with `CattywampusStudio/claude-visuals`, then **Add plugin**.
+
+You are asked to add the marketplace (answer `y`) and to pick a scope. Installed at the user scope, the mod loads in every session, including the ones the desktop app starts for its Code tab.
+
+### Use
+
+The look is drawn by the Claude desktop app's Code tab. A terminal session runs the mod but draws no look.
+
+- A **Looks** pane opens beside the conversation: browse themes with Previous and Next, apply one with **Use this theme**, then choose the background, whether it moves, and the progress bar.
+- A small **Looks** button above the message box reopens the pane.
+- `/looks` opens the pane. `/looks <theme>` applies a theme by name, `/looks <theme> pixels` picks a background with it, and `/looks off` puts the app back to its own colours.
+
+Your pick is kept for your next session.
+
+### Needs
+
+Claude Code 2.1.324 or later in the desktop app. Mods run with your own access to files and the network, so read a mod's code before you install it; this one reads and writes only its own saved pick.
+
+### If the background does not move
+
+The app plays a moving background only while it judges it safe and cheap to draw, and it follows its own Motion setting and the system's Reduce Motion. When it holds a background still, the scene is drawn at rest. Turning **Motion in the background** off in the Looks pane does the same on purpose.
+
+### Develop
+
+```
+claude --plugin-dir ./studio-looks
+claude plugin validate ./studio-looks
+cd studio-looks && claude plugin test .
+```
+
+`hooks/themes.ts` is the theme collection. `hooks/scene.ts` draws the backgrounds as SVG; the app animates only SVG it accepts, and the test in `hooks/looks.test.tsx` guards the two things it was seen to refuse.
+
+## Credits and licence
+
+MIT, see [LICENSE](LICENSE).
+
+`studio-looks/hooks/make-colors.js` and `make-colors.d.ts` are Claude Code's own theme helper, copied unchanged from its plugin-authoring skill as that skill instructs. They are Anthropic's and are not covered by this repository's licence.

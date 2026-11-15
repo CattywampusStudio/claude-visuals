@@ -1,0 +1,12 @@
+{
+  "name": "claude-visuals",
+  "description": "Mods that change how the Claude desktop app looks: themes, moving backgrounds and progress bars",
+  "owner": { "name": "Cattywampus Studio" },
+  "plugins": [
+    {
+      "name": "studio-looks",
+      "source": "./studio-looks",
+      "description": "Pick the Claude desktop app's look from a collection of themes: colours, a moving background and a matching progress bar"
+    }
+  ]
+}
