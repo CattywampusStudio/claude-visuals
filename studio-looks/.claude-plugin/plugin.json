@@ -1,7 +1,7 @@
 {
   "name": "studio-looks",
-  "version": "0.8.0",
-  "description": "Pick the app's look from a collection of themes: colours, a moving background (lava lamp, dissolving pixels or falling symbols), and a matching progress bar above the message box",
+  "version": "0.9.0",
+  "description": "Pick the app's look from a collection of themes: colours, a moving background (a lava lamp, a synthwave grid, a night city, a pen plotter and more), and a matching progress bar above the message box",
   "author": { "name": "Cattywampus Studio" },
   "license": "MIT",
   "repository": "https://github.com/CattywampusStudio/claude-visuals",

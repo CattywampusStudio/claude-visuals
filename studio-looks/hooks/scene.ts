@@ -2,15 +2,18 @@
 // sinks and merges through a blur-then-threshold "goo" filter, a glow from the
 // base. One SVG serves both modes: its colours are CSS variables that a
 // prefers-color-scheme rule swaps. No logo or wording. Two more scenes follow the
-// lamp: dissolving pixels and falling symbols.
+// lamp: dissolving pixels and falling symbols. Six more drawn scenes are in scenery.ts.
+import { SCENERIES, SCENERY, seeded } from './scenery.ts'
+import type { Scenery } from './scenery.ts'
 import type { Mode, Theme } from './themes.ts'
 
 /**
  * 'lamp': wax that merges (filtered). 'soft': soft glows, no filter, lighter to draw.
  * 'pixels': squares that fade in, drift up and dissolve. 'rain': columns of symbols falling.
+ * The rest are the drawn scenes of scenery.ts.
  */
-export type Kind = 'lamp' | 'soft' | 'pixels' | 'rain'
-export const KINDS: readonly Kind[] = ['lamp', 'soft', 'pixels', 'rain']
+export type Kind = 'lamp' | 'soft' | 'pixels' | 'rain' | Scenery
+export const KINDS: readonly Kind[] = ['lamp', 'soft', 'pixels', 'rain', ...SCENERIES]
 
 const W = 1600
 const H = 1000
@@ -40,6 +43,7 @@ const atRest = (svg: string): string => svg.replace(/<\/svg>\s*$/, `<style>*{ani
 export const backdrop = (theme: Theme, kind: Kind, moving: boolean): string => {
   if (kind === 'pixels') return moving ? pixels(theme) : atRest(pixels(theme))
   if (kind === 'rain') return moving ? rain(theme) : atRest(rain(theme))
+  if (kind !== 'lamp' && kind !== 'soft') return SCENERY[kind](theme, moving)
   const goo = kind !== 'soft'
 
   const style =
@@ -85,14 +89,6 @@ export const backdrop = (theme: Theme, kind: Kind, moving: boolean): string => {
     `<g class="wax"${goo ? ' filter="url(#goo)"' : ''}>${blobs}</g>` +
     `</svg>`
   )
-}
-
-// A small fixed-seed random source, so a scene is the same drawing every time it is asked for.
-const seeded = (seed: number) => () => {
-  seed = (seed + 0x6d2b79f5) | 0
-  let t = Math.imul(seed ^ (seed >>> 15), 1 | seed)
-  t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t
-  return ((t ^ (t >>> 14)) >>> 0) / 4294967296
 }
 
 const frame = (theme: Theme, wax: [number, number], css: string, defs: string, body: string): string =>

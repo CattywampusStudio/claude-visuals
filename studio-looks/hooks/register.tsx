@@ -16,8 +16,27 @@ const BACKGROUNDS: readonly { value: Background; label: string }[] = [
   { value: 'soft', label: 'Soft glows' },
   { value: 'pixels', label: 'Dissolving pixels' },
   { value: 'rain', label: 'Falling symbols' },
+  { value: 'grid', label: 'Grid horizon' },
+  { value: 'sunset', label: 'Banded sunset' },
+  { value: 'city', label: 'Night city' },
+  { value: 'plotter', label: 'Plotter proof' },
+  { value: 'weave', label: 'Loom' },
+  { value: 'glyphs', label: 'Glyph field' },
   { value: 'plain', label: 'Colours only' },
 ]
+// What each drawn background shows, for the picture's description.
+const SHOWS: Record<Exclude<Background, 'plain'>, string> = {
+  lamp: "lava lamp wax in the theme's colours",
+  soft: "soft glows in the theme's colours",
+  pixels: "squares in the theme's colours",
+  rain: "columns of symbols in the theme's colours",
+  grid: 'a floor grid running to a slotted sun on the horizon',
+  sunset: 'a banded sun setting into water between islands with palms',
+  city: 'a city of towers at night with lit windows, neon signs and rain',
+  plotter: 'blocks being hatched line by line, as a pen plotter draws',
+  weave: 'a dotted cloth being woven row by row',
+  glyphs: 'a field of small mechanical marks',
+}
 const BARS: readonly { value: BarStyle; label: string }[] = [
   { value: 'lava', label: 'Matches the background' },
   { value: 'native', label: "The app's own" },
@@ -76,7 +95,10 @@ const look = (c: Choice): ThemeSetArgs => {
   // frosting wipes out (seen in the app: the pixels were very faint), so their panels are clearer and barely blurred.
   // The blur is never 0: read in the app's own styles, panels with no blur are tinted at 70% or more whatever
   // opacity is asked for, and seen in the app that left only a faint glow of the background.
-  const light = c.background === 'pixels' ? { blur: 3, opacity: 0.32 } : c.background === 'rain' ? { blur: 6, opacity: 0.45 } : { blur: 18, opacity: 0.55 }
+  // The six drawn scenes are line work too: the three pictures keep a little blur, the three mechanical ones almost none.
+  const fine = c.background === 'pixels' || c.background === 'plotter' || c.background === 'weave' || c.background === 'glyphs'
+  const drawn = c.background === 'rain' || c.background === 'grid' || c.background === 'sunset' || c.background === 'city'
+  const light = fine ? { blur: 3, opacity: c.background === 'pixels' ? 0.32 : 0.4 } : drawn ? { blur: 6, opacity: 0.45 } : { blur: 18, opacity: 0.55 }
   // Read in the app's styles: behind the conversation column the app lays a veil of the panel colour whose
   // strength is this opacity, and it draws its own cards there (the summary and next steps, tool cards) with no
   // ground of their own. So a card is only as readable as the veil is strong; a mod cannot draw on those cards.
@@ -207,7 +229,7 @@ const useBrowsed = async ($: EngineInterface) => {
 
 export const register: Register = on => {
   on('session.start', async ($, e, next) => {
-    await $.command.register({ name: 'looks', description: 'Pick the app look: theme, background and progress bar', argumentHint: '[theme] [lamp|soft|pixels|rain|plain] [off]' })
+    await $.command.register({ name: 'looks', description: 'Pick the app look: theme, background and progress bar', argumentHint: '[theme] [lamp|soft|pixels|rain|grid|sunset|city|plotter|weave|glyphs|plain] [off]' })
     const stored = mend(await $.store.get('choice'))
     await update($, choice, () => stored)
     await update($, cleared, () => false)
@@ -233,8 +255,9 @@ export const register: Register = on => {
       await $.theme.clear()
       return { text: 'Look cleared: the app is back to its own colours. Pick again in the Looks pane or with /looks.' }
     }
-    const named = THEMES.find(t => words.some(w => t.id === w || t.id.startsWith(w) || t.label.toLowerCase().startsWith(w)))
     const background = BACKGROUNDS.find(b => words.includes(b.value))
+    // a word that names a background is that background, not the start of a theme's name ("sunset" is not Sunset Blocks)
+    const named = THEMES.find(t => words.some(w => t.id === w || (!BACKGROUNDS.some(b => b.value === w) && (t.id.startsWith(w) || t.label.toLowerCase().startsWith(w)))))
     const patch: Partial<Choice> = { ...(named ? { theme: named.id } : {}), ...(background ? { background: background.value } : {}) }
     const now = Object.keys(patch).length > 0 ? await pick($, patch) : await read($, choice)
     await $.ui.open({ id: PANE, title: TITLE })
@@ -275,9 +298,8 @@ export const register: Register = on => {
     const kind = KINDS.find(k => k === head) ?? 'lamp'
     const theme = themeOf(rest.join('_'))
     const isMoving = motion !== 'off'
-    const what = kind === 'pixels' ? "squares in the theme's colours" : kind === 'rain' ? "columns of symbols in the theme's colours" : "lava lamp wax in the theme's colours"
 
-    return <Svg source={backdrop(theme, kind, isMoving)} alt={`${theme.label}: ${what}, ${isMoving ? 'slowly moving' : 'still'}`} isInteractive />
+    return <Svg source={backdrop(theme, kind, isMoving)} alt={`${theme.label}: ${SHOWS[kind]}, ${isMoving ? 'slowly moving' : 'still'}`} isInteractive />
   })
 
   // Claude's replies over a drawn background. The app's veil behind the conversation is only a tint, so on a

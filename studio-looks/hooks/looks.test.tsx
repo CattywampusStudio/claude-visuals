@@ -33,17 +33,61 @@ const engine = (on: Parameters<Extract<Parameters<typeof test>[1], (...args: any
   on('tool.call', () => ({ result: {} }))
 }
 
-// The desktop app only animates a background whose SVG its player accepts. Two things it refuses and
-// then draws still, with no error: an element off its list (feColorMatrix is one), and `@media(` written
-// without a space, which its checker reads as a CSS function it does not know.
+// The desktop app only animates a background whose SVG its player accepts; anything else it draws still, with
+// no error. These lists are the player's own, read from the app's interface code on 2026-11-15: the SVG elements
+// it takes (feColorMatrix is not one), and the CSS functions it knows. `@media(` written without a space reads to
+// it as a function called "media", and a path() or a CSS gradient is refused the same way.
+const ELEMENTS = new Set(
+  'animate animateMotion animateTransform set circle clipPath defs desc ellipse feBlend feComposite feDropShadow feFlood feGaussianBlur feMerge feMergeNode feOffset filter g line linearGradient marker mask mpath path pattern polygon polyline radialGradient rect stop style svg symbol text textPath title tspan use'.split(' '),
+)
+const FUNCTIONS = new Set(
+  'url color color-mix hsl hsla hwb lab lch light-dark oklab oklch rgb rgba abs acos asin atan atan2 calc clamp cos exp hypot log max min mod pow rem round sign sin sqrt tan var matrix matrix3d perspective rotate rotate3d rotatex rotatey rotatez scale scale3d scalex scaley scalez skew skewx skewy translate translate3d translatex translatey translatez cubic-bezier linear steps blur drop-shadow grayscale hue-rotate invert opacity saturate sepia is not nth-child nth-last-child nth-last-of-type nth-of-type where'.split(' '),
+)
+/** What in a scene the player would refuse: elements off its list, functions it does not know, things it bans outright. */
+const refused = (svg: string): string[] => {
+  // what is drawn as words (the symbols of the rain, a label) is not CSS and is not checked
+  const code = svg.replace(/>[^<]*</g, (text, at: number) => (svg.slice(0, at).endsWith('<style') || /<style[^>]*$/.test(svg.slice(0, at + 1)) ? text : '><'))
+  const elements = [...svg.matchAll(/<([A-Za-z][\w-]*)/g)].map(m => m[1] ?? '').filter(name => !ELEMENTS.has(name))
+  const functions = [...code.matchAll(/([^\s()[\]{}<>;:,'"`=+*/!@#$%^&|~?]{0,64})\(/g)].map(m => (m[1] ?? '').toLowerCase()).filter(name => name !== '' && !FUNCTIONS.has(name))
+  const banned = ['shape-rendering', 'vector-effect', 'data:', '\\'].filter(word => code.includes(word))
+  return [...new Set([...elements, ...functions.map(name => `${name}()`), ...banned])]
+}
+
 test('every scene keeps to what the app will animate', async () => {
   for (const theme of THEMES) {
     for (const kind of KINDS) {
-      const svg = backdrop(theme, kind, true)
-      expect(svg.includes('feColorMatrix')).toBe(false)
-      expect(/@media\(/.test(svg)).toBe(false)
+      for (const moving of [true, false]) {
+        const svg = backdrop(theme, kind, moving)
+        expect(refused(svg)).toEqual([])
+        expect(/@media\(/.test(svg)).toBe(false)
+      }
     }
   }
+  // the check does catch what the app was seen to refuse
+  expect(refused('<svg><filter><feColorMatrix/></filter><style>@media(prefers-color-scheme:light){a{offset-path:path("M0 0")}}</style></svg>')).toEqual(['feColorMatrix', 'media()', 'path()'])
+})
+
+test('a drawn scene is picked in the pane or by its name, and keeps its lines clear', async ($, on) => {
+  const scenes: string[] = []
+  const veils: number[] = []
+  engine(on, scenes, veils)
+  await $.session.start({ cwd: '/', surface: 'desktop', isInteractive: true })
+  const ui = await $.ui.mount({ ...PANE, surface: 'desktop' })
+
+  await $.ui.select({ plugin: 'studio-looks', key: 'background', value: 'grid' })
+  expect(scenes.at(-1)).toBe('grid_on_neon-arcade')
+  await $.ui.select({ plugin: 'studio-looks', key: 'veil', value: 'light' })
+  expect(veils.at(-1)).toBe(0.45)
+  await $.ui.select({ plugin: 'studio-looks', key: 'background', value: 'plotter' })
+  expect(veils.at(-1)).toBe(0.4)
+
+  // "sunset" is the background of that name, not the theme whose name starts with it
+  await $.command.run({ command: 'looks', args: 'sunset' })
+  expect(scenes.at(-1)).toBe('sunset_on_neon-arcade')
+  await $.command.run({ command: 'looks', args: 'retro-sunset city' })
+  expect(scenes.at(-1)).toBe('city_on_retro-sunset')
+
+  await ui.unmount()
 })
 
 test('changing the theme keeps the background in use', async ($, on) => {

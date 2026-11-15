@@ -557,5 +557,116 @@ export const THEMES: readonly Theme[] = [
         "#8A4CFF"
       ]
     }
+  },
+  {
+    "id": "synthwave",
+    "label": "Synthwave",
+    "background": "grid",
+    "light": {
+      "ground": "#F6EFFA",
+      "card": "#FFFFFF",
+      "text": "#1B1030",
+      "muted": "#6A5C85",
+      "accent": "#D6187A",
+      "good": "#1F8F5F",
+      "warning": "#B86E00",
+      "bad": "#D11A4A",
+      "washes": [
+        "#D6187A",
+        "#0E8FB0",
+        "#6D28D9",
+        "#C77700"
+      ]
+    },
+    "dark": {
+      "ground": "#120A2A",
+      "card": "#1D1240",
+      "text": "#F5EEFF",
+      "muted": "#A99BC9",
+      "accent": "#FF2E97",
+      "good": "#34D399",
+      "warning": "#FFB000",
+      "bad": "#FF4D6D",
+      "washes": [
+        "#FF2E97",
+        "#22D3EE",
+        "#7C3AED",
+        "#FFB000"
+      ]
+    }
+  },
+  {
+    "id": "night-city",
+    "label": "Night City",
+    "background": "city",
+    "light": {
+      "ground": "#EEF1F4",
+      "card": "#FFFFFF",
+      "text": "#0A0D14",
+      "muted": "#566173",
+      "accent": "#007C91",
+      "good": "#1B8A5A",
+      "warning": "#B26A00",
+      "bad": "#D1004B",
+      "washes": [
+        "#B58900",
+        "#007C91",
+        "#D1004B",
+        "#5B3FD6"
+      ]
+    },
+    "dark": {
+      "ground": "#05070D",
+      "card": "#0E131C",
+      "text": "#E6F1FF",
+      "muted": "#8FA3BF",
+      "accent": "#FCEE0A",
+      "good": "#3DDC97",
+      "warning": "#FF9F1C",
+      "bad": "#FF2A6D",
+      "washes": [
+        "#FCEE0A",
+        "#00E5FF",
+        "#FF2A6D",
+        "#7B61FF"
+      ]
+    }
+  },
+  {
+    "id": "retro-sunset",
+    "label": "Retro Sunset",
+    "background": "sunset",
+    "light": {
+      "ground": "#FBF0DE",
+      "card": "#FFFDF8",
+      "text": "#2B1420",
+      "muted": "#7A5F6B",
+      "accent": "#E8590C",
+      "good": "#2F8F4E",
+      "warning": "#B87900",
+      "bad": "#D6336C",
+      "washes": [
+        "#E0A100",
+        "#E8590C",
+        "#D6336C",
+        "#862E9C"
+      ]
+    },
+    "dark": {
+      "ground": "#1A0B1F",
+      "card": "#27122E",
+      "text": "#FFF1DC",
+      "muted": "#C2A3B8",
+      "accent": "#FF7A1A",
+      "good": "#7BD389",
+      "warning": "#FFC83D",
+      "bad": "#F2386B",
+      "washes": [
+        "#FFC83D",
+        "#FF7A1A",
+        "#F2386B",
+        "#8E2DAA"
+      ]
+    }
   }
 ]

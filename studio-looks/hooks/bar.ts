@@ -1,5 +1,7 @@
 // Drawn pieces that are not the backdrop: the lava progress bar and the picker's
 // swatch strip. Both follow the light or dark setting the same way the scene does.
+import { SCENERY } from './scenery.ts'
+import type { Scenery } from './scenery.ts'
 import type { Mode, Theme } from './themes.ts'
 
 const W = 640
@@ -131,9 +133,39 @@ export const symbolBar = (theme: Theme, fraction: number | null): string => {
   return `<svg xmlns="http://www.w3.org/2000/svg" width="${W}" height="${H + 2}" viewBox="0 -1 ${W} ${H + 2}">${barStyle(theme, css)}${row}${line}</svg>`
 }
 
-/** The progress bar in the style of the background in use: pixel cells, symbols, or the wax tube. */
+/**
+ * The neon bar, for the grid, the sunset and the city: a thin lit line in the theme's first two colours with a
+ * bright head that pulses. With no known end, a lit stretch slides along the line.
+ */
+export const neonBar = (theme: Theme, fraction: number | null): string => {
+  const known = fraction !== null
+  const fill = known ? Math.max(0, Math.min(1, fraction)) * W : W * 0.28
+  const css =
+    `.s0{stop-color:var(--w0)}.s1{stop-color:var(--w1)}.gl{opacity:.3}` +
+    `.pu{transform-box:fill-box;transform-origin:50% 50%;animation:pu 1.4s ease-in-out infinite alternate}@keyframes pu{from{transform:scale(.7)}to{transform:scale(1.15)}}` +
+    (known ? '' : `.run{animation:run 2.6s ease-in-out infinite alternate}@keyframes run{from{transform:translateX(0)}to{transform:translateX(${(W * 0.72).toFixed(1)}px)}}`) +
+    `@media(prefers-reduced-motion:reduce){.pu,.run{animation:none}}`
+  const lit =
+    `<rect class="gl" x="0" y="6" width="${fill.toFixed(1)}" height="10" rx="5" fill="url(#neon)"/>` +
+    `<rect x="0" y="9.5" width="${fill.toFixed(1)}" height="3" rx="1.5" fill="url(#neon)"/>` +
+    (fill > 0 ? `<circle class="pu hd" cx="${Math.max(5, fill - 5).toFixed(1)}" cy="11" r="5"/>` : '')
+  return (
+    `<svg xmlns="http://www.w3.org/2000/svg" width="${W}" height="${H + 2}" viewBox="0 -1 ${W} ${H + 2}">` +
+    `<defs><linearGradient id="neon" gradientUnits="userSpaceOnUse" x1="0" y1="0" x2="${W}" y2="0"><stop class="s0" offset="0"/><stop class="s1" offset="1"/></linearGradient></defs>` +
+    barStyle(theme, css) +
+    `<rect class="e" x="0" y="9.5" width="${W}" height="3" rx="1.5"/>` +
+    `<g${known ? '' : ' class="run"'}>${lit}</g>` +
+    `</svg>`
+  )
+}
+
+const isScenery = (background: string): background is Scenery => Object.hasOwn(SCENERY, background)
+/** The mechanical scenes take the stepped cells; the three pictures take the neon line. */
+const isMechanical = (background: string) => background === 'pixels' || background === 'plotter' || background === 'weave' || background === 'glyphs'
+
+/** The progress bar in the style of the background in use: cells, symbols, a neon line, or the wax tube. */
 export const themedBar = (theme: Theme, background: string, fraction: number | null): string =>
-  background === 'pixels' ? pixelBar(theme, fraction) : background === 'rain' ? symbolBar(theme, fraction) : lavaBar(theme, fraction)
+  isMechanical(background) ? pixelBar(theme, fraction) : background === 'rain' ? symbolBar(theme, fraction) : isScenery(background) ? neonBar(theme, fraction) : lavaBar(theme, fraction)
 
 /** The look at a glance for the picker: the ground with the four wax colours on it. */
 export const swatch = (theme: Theme): string =>
@@ -147,7 +179,7 @@ export const swatch = (theme: Theme): string =>
 
 /**
  * A small picture of the app in a theme, for browsing before applying: the page
- * over the background in use (wax, squares, symbols, or none), two frosted
+ * over the background in use (wax, squares, symbols, a drawn scene, or none), two frosted
  * panels, a few lines of text, an accent button and the progress bar.
  */
 export const preview = (theme: Theme, background: string = theme.background): string => {
@@ -188,14 +220,19 @@ export const preview = (theme: Theme, background: string = theme.background): st
     }
     back = `<g class="wax">${streams}</g>`
   }
+  // a drawn scene is the scene itself, small: the same SVG set into the window
+  if (isScenery(background)) back = SCENERY[background](theme, true).replace('<svg ', `<svg x="0" y="0" width="${w}" height="${h}" `)
   // the little progress bar in the panel, in the same style as the real one
   let mini = `<g clip-path="url(#tube)"><rect class="c0" x="104" y="150" width="130" height="10"/><ellipse class="c1" cx="130" cy="151" rx="12" ry="5"/><ellipse class="c2" cx="170" cy="160" rx="13" ry="5"/><ellipse class="c3" cx="214" cy="151" rx="11" ry="5"/></g>`
-  if (background === 'pixels') {
+  if (isMechanical(background)) {
     mini = Array.from({ length: 16 }, (_, i) => `<rect class="${i < 10 ? `c${(i * 7) % 4}` : 'tr'}" x="${104 + i * 12.2}" y="150" width="9.5" height="9.5" rx="2"/>`).join('')
   }
   if (background === 'rain') {
     const row = ['7', '+', 'Σ', '0', '#', 'λ', '=', '4', 'π', '*', '1', 'Δ', '/', '9', 'φ', ':', '3', 'Ω']
     mini = row.map((g, i) => `<text class="${i === 10 ? 'hd' : i < 10 ? 'c0' : 'm'} sy" x="${109 + i * 10.8}" y="160">${g}</text>`).join('')
+  }
+  if (isScenery(background) && !isMechanical(background)) {
+    mini = `<rect class="tr" x="104" y="153.5" width="194" height="3" rx="1.5"/><rect class="c0" x="104" y="153.5" width="120" height="3" rx="1.5"/><circle class="hd" cx="224" cy="155" r="4.5"/>`
   }
   return (
     `<svg xmlns="http://www.w3.org/2000/svg" width="${w}" height="${h}" viewBox="0 0 ${w} ${h}">` +
@@ -221,7 +258,7 @@ export const preview = (theme: Theme, background: string = theme.background): st
     `<text class="aa" x="104" y="36">Aa 123</text>` +
     [0, 1, 2].map(i => `<rect class="${i === 0 ? 't' : 'm'}" x="104" y="${50 + i * 14}" width="${[150, 186, 120][i]}" height="6" rx="3"/>`).join('') +
     `<rect class="a" x="104" y="100" width="62" height="20" rx="10"/>` +
-    (background === 'pixels' || background === 'rain' ? '' : `<rect class="tr" x="104" y="150" width="194" height="10" rx="5"/>`) +
+    (isMechanical(background) || background === 'rain' || isScenery(background) ? '' : `<rect class="tr" x="104" y="150" width="194" height="10" rx="5"/>`) +
     mini +
     `</g><rect class="edge" x=".5" y=".5" width="${w - 1}" height="${h - 1}" rx="13.5"/></svg>`
   )

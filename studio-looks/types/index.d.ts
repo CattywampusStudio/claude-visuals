@@ -1,5 +1,10 @@
-/** 'lamp': merging wax. 'soft': soft glows, no filter. 'pixels': squares that fade and dissolve. 'rain': falling symbols. 'plain': the theme's colours with no drawn background. */
-export type Background = 'lamp' | 'soft' | 'pixels' | 'rain' | 'plain'
+/**
+ * 'lamp': merging wax. 'soft': soft glows, no filter. 'pixels': squares that fade and dissolve. 'rain': falling symbols.
+ * 'grid': a floor grid rolling under a slotted sun. 'sunset': a banded sun setting into water. 'city': towers, neon and rain.
+ * 'plotter': blocks hatched line by line. 'weave': a twill woven row by row. 'glyphs': a field of small machines.
+ * 'plain': the theme's colours with no drawn background.
+ */
+export type Background = 'lamp' | 'soft' | 'pixels' | 'rain' | 'grid' | 'sunset' | 'city' | 'plotter' | 'weave' | 'glyphs' | 'plain'
 /** 'lava': a drawn bar in the style of the background (wax tube, pixel cells or symbols). 'native': the app's own progress element in the theme's accent. 'off': no bar. */
 export type BarStyle = 'lava' | 'native' | 'off'
 /** Whether the background moves. 'off' draws the same scene at rest. */
