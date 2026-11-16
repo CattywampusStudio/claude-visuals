@@ -33,7 +33,7 @@ The look is drawn in the desktop app. A terminal session runs the mod but draws 
 
 Neon Arcade, Midnight Pop, Workshop, Playground, Dusk, Backstage, Ember, Deep Sea, Orchard, Ink, Green Rain, Cipher, Pixel Dust, Static, Sunset Blocks, Synthwave, Night City, Retro Sunset.
 
-**A background** sits behind the conversation, moving or still. Changing the theme recolours whichever one is in use, so every background works with every theme.
+**A background** sits behind the conversation, moving or still. Changing the theme recolours whichever one is in use, so every background works with every theme. **Animation speed**, under the background, plays it slower or faster, from a quarter to one and a half times (Vector tunnel stops at one and a quarter): press − or + beside the bar.
 
 | | | |
 | :---: | :---: | :---: |

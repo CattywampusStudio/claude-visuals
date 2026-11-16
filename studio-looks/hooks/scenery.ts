@@ -524,26 +524,35 @@ const flock = (theme: Theme, moving: boolean): string => {
       stops.push([x, y, (xb - xa) / (0.004 * T), (yb - ya) / (0.004 * T)])
     }
     const top = Math.max(...stops.map(([, , vx, vy]) => Math.hypot(vx, vy)))
-    // The flock keeps its ranks across the way it is heading: longer the faster it goes, wider the slower, and it breathes.
-    const lie = (k: number): [number, number, number, number] => {
-      const [, , vx = 0, vy = 0] = stops[k] ?? [], head = Math.atan2(vy, vx), pace = Math.hypot(vx, vy) / top
-      const breathe = 0.86 + 0.26 * Math.sin(2 * Math.PI * 3 * (k / STOPS) + fi * 2)
-      const along = breathe * (0.8 + 0.7 * pace), across = breathe * (1.25 - 0.5 * pace)
-      return [Math.cos(head) * along, -Math.sin(head) * across, Math.sin(head) * along, Math.cos(head) * across]
-    }
-    // A bird's place is its own (--ox along the flock, --oy across it) laid over the leader's; every bird flies the
-    // same keyframes, each a moment behind the bird ahead, so the flock bends along the course it has flown.
-    const place = (x: number, y: number, a: number, b: number, c: number, d: number) =>
-      `translate(calc(${n1(x)}px + var(--ox)*${n2(a)} + var(--oy)*${n2(b)}),calc(${n1(y)}px + var(--ox)*${n2(c)} + var(--oy)*${n2(d)}))`
-    let fly = ''
-    stops.forEach(([x, y], k) => { fly += `${n2((k / STOPS) * 100)}%{transform:${place(x, y, ...lie(k))}}` })
-    // Held still, the birds behind are set straight back along the leader's heading.
-    const [x0 = 0, y0 = 0, vx0 = 0, vy0 = 0] = stops[0] ?? [], [a0, b0, c0, d0] = lie(0)
-    const rest = place(x0 - 0.5 * f.tail * vx0, y0 - 0.5 * f.tail * vy0, a0 + (f.tail * vx0) / f.long, b0, c0 + (f.tail * vy0) / f.long, d0)
-    css += `.f${fi} path{transform:${rest};animation:fly${fi} ${T}s linear infinite}@keyframes fly${fi}{${fly}}`
+    // The flock keeps its ranks across the way it is heading: longer the faster it goes, wider the slower, and it
+    // breathes. As a turn, a stretch along the heading and one across it; the heading is kept unbroken from stop to
+    // stop so the flock never spins the long way round.
+    let was = 0
+    const lie = stops.map(([, , vx, vy], k) => {
+      let head = (Math.atan2(vy, vx) * 180) / Math.PI
+      if (k > 0) head += 360 * Math.round((was - head) / 360)
+      was = head
+      const pace = Math.hypot(vx, vy) / top, breathe = 0.86 + 0.26 * Math.sin(2 * Math.PI * 3 * (k / STOPS) + fi * 2)
+      return [head, breathe * (0.8 + 0.7 * pace), breathe * (1.25 - 0.5 * pace)] as const
+    })
+    // Each group of birds flies the leader's course a moment behind the group ahead, turned and stretched as the
+    // flock is. Each bird stands at its own place in its rank, and its square undoes the turn and the
+    // stretch, so it stays an upright pixel of its own size: its place is its `translate`, which the browser applies
+    // before the animated `transform`, so one element does both. Plain-number animations cost far less to play than
+    // a formula worked out for every bird on every frame.
+    const fly = (k: number, x: number, y: number) => { const [h, a, c] = lie[k]!; return `translate(${n1(x)}px,${n1(y)}px) rotate(${n2(h)}deg) scale(${n2(a)},${n2(c)})` }
+    const undo = (k: number) => { const [h, a, c] = lie[k]!; return `scale(${n2(1 / a)},${n2(1 / c)}) rotate(${n2(-h)}deg)` }
+    let rank = '', square = ''
+    stops.forEach(([x, y], k) => { const at = n2((k / STOPS) * 100); rank += `${at}%{transform:${fly(k, x, y)}}`; square += `${at}%{transform:${undo(k)}}` })
+    // Held still, each group is set straight back along the leader's heading by its own delay.
+    const [x0 = 0, y0 = 0, vx0 = 0, vy0 = 0] = stops[0] ?? []
+    css += `.f${fi}>g{animation:fly${fi} ${T}s linear infinite;animation-delay:var(--d)}@keyframes fly${fi}{${rank}}` +
+      `.f${fi} path{transform:${undo(0)};animation:undo${fi} ${T}s linear infinite;animation-delay:var(--d)}@keyframes undo${fi}{${square}}`
     // The birds stand in ranks a steady gap apart, each nudged off its spot. Evenly spread, the flock passes over
     // any one place as a steady shade and not as a flicker, which the app would stop.
-    let all = ''
+    // Birds that set off at nearly the same moment share a group: each bird's moment is rounded to a quarter of the
+    // gap between ranks, close enough to keep the scatter each bird's own moment gives the flock as it bends.
+    const groups = new Map<number, string>()
     for (let i = 0; i < f.ranks; i++) {
       const half = 10 + f.fat * Math.sin(Math.PI * (0.08 + 0.84 * (i / (f.ranks - 1)))) ** 0.8, rows = Math.max(1, Math.round((2 * half) / GAP))
       for (let j = 0; j < rows; j++) {
@@ -553,8 +562,14 @@ const flock = (theme: Theme, moving: boolean): string => {
         // the edges of the flock are thinner than its middle
         if (thin < 0.6 * Math.max(0, (Math.abs(oy) / half - 0.55) / 0.45)) continue
         const cls = pick < 0.52 ? '' : pick < 0.8 ? ' class="c0"' : pick < 0.93 ? ' class="c1"' : ' class="c3"'
-        all += `<path${cls} d="M${-size / 2} ${-size / 2}h${size}v${size}h${-size}z" style="--ox:${Math.round((0.5 - u) * f.long)}px;--oy:${oy}px;animation-delay:-${n2(T - u * f.tail)}s"/>`
+        const step = Math.round(u * (f.ranks - 1) * 4)
+        groups.set(step, (groups.get(step) ?? '') + `<path${cls} style="translate:${Math.round((0.5 - u) * f.long)}px ${oy}px" d="M${-size / 2} ${-size / 2}h${size}v${size}h${-size}z"/>`)
       }
+    }
+    let all = ''
+    for (const [step, inGroup] of [...groups].sort((a, b) => a[0] - b[0])) {
+      const back = (step / ((f.ranks - 1) * 4)) * f.tail
+      all += `<g style="--d:-${n2(T - back)}s;transform:${fly(0, x0 - back * vx0, y0 - back * vy0)}">${inGroup}</g>`
     }
     birds += `<g class="f${fi}">${all}</g>`
   })
@@ -678,7 +693,7 @@ const ridges = (theme: Theme, moving: boolean): string => {
     for (let x = -188; x <= W + 200; x += 12) { const shake = (rand() - 0.5) * 3; if ((x + 188) % 24) base += `L${x} ${n1(y + shake)}` }
     let bumps = ''
     const count = 7 + Math.floor(rand() * 3)
-    const xs = Array.from({ length: count }, (_, i) => SIDES[i % 2] + (rand() + rand() + rand() - 1.5) * 300).sort((a, b) => a - b)
+    const xs = Array.from({ length: count }, (_, i) => (SIDES[i % 2] ?? 800) + (rand() + rand() + rand() - 1.5) * 300).sort((a, b) => a - b)
     for (const x of xs) {
       const half = 34 + rand() * 78, tall = (16 + 150 * env(x)) * (0.45 + rand() * 0.75)
       let d = `M${n1(-half)} 0`
@@ -780,7 +795,7 @@ const circuit = (theme: Theme, moving: boolean): string => {
     body:
       `<rect x="-400" y="-400" width="${W + 800}" height="${H + 800}" fill="url(#holes)" style="opacity:var(--board)"/>` +
       `<g class="trc">${traces}</g><g class="via">${ends}</g>${parts}${chips}` +
-      [[210, 490], [1390, 510]].map(([x, y], i) => `<rect x="${x - 70}" y="${y - 62}" width="140" height="124" rx="6" style="fill:color-mix(in srgb,var(--ground) 70%,var(--text))"/><circle class="die" cx="${x}" cy="${y}" r="64" fill="url(#die)"${i ? ' style="animation-delay:-2.5s"' : ''}/>`).join('') +
+      ([[210, 490], [1390, 510]] as const).map(([x, y], i) => `<rect x="${x - 70}" y="${y - 62}" width="140" height="124" rx="6" style="fill:color-mix(in srgb,var(--ground) 70%,var(--text))"/><circle class="die" cx="${x}" cy="${y}" r="64" fill="url(#die)"${i ? ' style="animation-delay:-2.5s"' : ''}/>`).join('') +
       `<circle class="led c1" cx="380" cy="340" r="4"/><circle class="led c3" cx="1560" cy="350" r="4" style="animation-delay:-1.1s"/><circle class="led c0" cx="380" cy="640" r="4" style="animation-delay:-.6s"/><circle class="led c1" cx="1560" cy="660" r="4" style="animation-delay:-1.7s"/>` +
       `<g>${pulses}</g>`,
   })

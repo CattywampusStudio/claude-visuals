@@ -1,6 +1,7 @@
 import { expect, test } from 'claude-code/testing'
 
 import { jobMark, preview, themedBar } from './bar.ts'
+import { paced, speedFor } from './pace.ts'
 import { KINDS, backdrop } from './scene.ts'
 import { THEMES } from './themes.ts'
 
@@ -90,7 +91,7 @@ test('a drawn scene is picked in the pane or by its name, and keeps its lines cl
   const ui = await $.ui.mount({ ...PANE, surface: 'desktop' })
 
   await $.ui.select({ plugin: 'studio-looks', key: 'background', value: 'grid' })
-  expect(scenes.at(-1)).toBe('grid_on_neon-arcade')
+  expect(scenes.at(-1)).toBe('grid_on_100_neon-arcade')
   await $.ui.select({ plugin: 'studio-looks', key: 'veil', value: 'light' })
   expect(veils.at(-1)).toBe(0.45)
   await $.ui.select({ plugin: 'studio-looks', key: 'background', value: 'plotter' })
@@ -98,16 +99,16 @@ test('a drawn scene is picked in the pane or by its name, and keeps its lines cl
 
   // "sunset" is the background of that name, not the theme whose name starts with it
   await $.command.run({ command: 'looks', args: 'sunset' })
-  expect(scenes.at(-1)).toBe('sunset_on_neon-arcade')
+  expect(scenes.at(-1)).toBe('sunset_on_100_neon-arcade')
   await $.command.run({ command: 'looks', args: 'retro-sunset city' })
-  expect(scenes.at(-1)).toBe('city_on_retro-sunset')
+  expect(scenes.at(-1)).toBe('city_on_100_retro-sunset')
 
   // the second set is picked the same way: a picture by name, and a fine-lined one keeps the lightest veil
   await $.command.run({ command: 'looks', args: 'nebula' })
-  expect(scenes.at(-1)).toBe('nebula_on_retro-sunset')
+  expect(scenes.at(-1)).toBe('nebula_on_100_retro-sunset')
   expect(veils.at(-1)).toBe(0.45)
   await $.ui.select({ plugin: 'studio-looks', key: 'background', value: 'circuit' })
-  expect(scenes.at(-1)).toBe('circuit_on_retro-sunset')
+  expect(scenes.at(-1)).toBe('circuit_on_100_retro-sunset')
   expect(veils.at(-1)).toBe(0.4)
 
   await ui.unmount()
@@ -120,16 +121,16 @@ test('changing the theme keeps the background in use', async ($, on) => {
   const ui = await $.ui.mount({ ...PANE, surface: 'desktop' })
 
   await $.ui.select({ plugin: 'studio-looks', key: 'background', value: 'pixels' })
-  expect(scenes.at(-1)).toBe('pixels_on_neon-arcade')
+  expect(scenes.at(-1)).toBe('pixels_on_100_neon-arcade')
 
   // from the Theme dropdown
   await $.ui.select({ plugin: 'studio-looks', key: 'theme', value: 'dusk' })
-  expect(scenes.at(-1)).toBe('pixels_on_dusk')
+  expect(scenes.at(-1)).toBe('pixels_on_100_dusk')
 
   // from the arrows and "Use this theme"
   await $.ui.press({ plugin: 'studio-looks', key: 'next' })
   await $.ui.press({ plugin: 'studio-looks', key: 'use' })
-  expect(scenes.at(-1)).toBe('pixels_on_backstage')
+  expect(scenes.at(-1)).toBe('pixels_on_100_backstage')
 
   await ui.unmount()
 })
@@ -363,4 +364,50 @@ test('a job mark is drawn for every state in every theme', () => {
       expect(svg.includes('animation:go')).toBe(status === 'running')
     }
   }
+})
+
+test('the speed bar steps the background slower and faster, held at the ends', async ($, on) => {
+  const scenes: string[] = []
+  engine(on, scenes)
+  await $.session.start({ cwd: '/', surface: 'desktop', isInteractive: true })
+  const ui = await $.ui.mount({ ...PANE, surface: 'desktop' })
+  // the bar's label and figure, whether the surface draws its own bar or text
+  const shown = async () => (await ui.find({ text: /^Animation speed \S+$/ }))?.text.replace('Animation speed ', '')
+
+  expect(await shown()).toBe('1×')
+  await $.ui.press({ plugin: 'studio-looks', key: 'faster' })
+  expect(scenes.at(-1)).toBe('lamp_on_125_neon-arcade')
+  await $.ui.press({ plugin: 'studio-looks', key: 'faster' })
+  await $.ui.press({ plugin: 'studio-looks', key: 'faster' })
+  expect(scenes.at(-1)).toBe('lamp_on_150_neon-arcade')
+  expect(await shown()).toBe('1½×')
+  for (let i = 0; i < 8; i++) await $.ui.press({ plugin: 'studio-looks', key: 'slower' })
+  expect(scenes.at(-1)).toBe('lamp_on_25_neon-arcade')
+  expect(await shown()).toBe('¼×')
+  // a new theme keeps the speed
+  await $.ui.select({ plugin: 'studio-looks', key: 'theme', value: 'dusk' })
+  expect(scenes.at(-1)).toBe('lamp_on_25_dusk')
+
+  await ui.unmount()
+})
+
+test('a speed changes only the timings of a scene', () => {
+  const secs = /(?<![\w.#-])(-?\d*\.?\d+)s(?![\w-])/g
+  for (const kind of KINDS) {
+    const svg = backdrop(THEMES[0]!, kind, true)
+    const half = paced(svg, 0.5)
+    // every time doubled at half speed, and nothing else touched
+    expect(half.replace(secs, 'T')).toBe(svg.replace(secs, 'T'))
+    const before = [...svg.matchAll(secs)].map(m => Number(m[1]))
+    const after = [...half.matchAll(secs)].map(m => Number(m[1]))
+    expect(before.length).toBeGreaterThan(0)
+    after.forEach((t, i) => expect(Math.abs(t - 2 * before[i]!)).toBeLessThan(0.01))
+    expect(paced(svg, 1)).toBe(svg)
+  }
+})
+
+test('the tunnel plays no faster than 1¼×, every other background up to 1½×', () => {
+  expect(speedFor('tunnel', 1.5)).toBe(1.25)
+  expect(speedFor('tunnel', 0.5)).toBe(0.5)
+  for (const kind of KINDS.filter(k => k !== 'tunnel')) expect(speedFor(kind, 1.5)).toBe(1.5)
 })

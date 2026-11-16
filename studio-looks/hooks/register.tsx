@@ -4,6 +4,7 @@ import type { EngineInterface, Register, RenderChildren, ThemeSetArgs } from 'cl
 import type { Background, BarStyle, Card, Choice, Decisions, Job, Motion, Plan, Replies, StepsView, Veil } from '../types'
 import { jobMark, preview, themedBar } from './bar.ts'
 import { colorsFor } from './look.ts'
+import { SPEEDS, paced, speedFor, speedName, stepSpeed, toSpeed } from './pace.ts'
 import { KINDS, backdrop } from './scene.ts'
 import { THEMES } from './themes.ts'
 import type { Theme } from './themes.ts'
@@ -77,9 +78,9 @@ const STEPS: readonly { value: StepsView; label: string }[] = [
   { value: 'list', label: 'Every step, listed under the bar' },
   { value: 'line', label: 'Only the step under way' },
 ]
-const FIRST: Choice = { theme: 'neon-arcade', background: 'lamp', bar: 'lava', motion: 'on', replies: 'bubble', veil: 'medium', decisions: 'mod', steps: 'list' }
+const FIRST: Choice = { theme: 'neon-arcade', background: 'lamp', bar: 'lava', motion: 'on', replies: 'bubble', veil: 'medium', decisions: 'mod', steps: 'list', speed: 1 }
 
-const choice = atom({ plugin: 'studio-looks', key: 'choice' } as const, FIRST, { shape: 'choice-8' })
+const choice = atom({ plugin: 'studio-looks', key: 'choice' } as const, FIRST, { shape: 'choice-9' })
 const card = atom({ plugin: 'studio-looks', key: 'card' } as const, null as Card | null, { shape: 'card-1' })
 // true after "/looks off", until the next pick: the app is back to its own look, so nothing of this mod's is drawn on it
 const cleared = atom({ plugin: 'studio-looks', key: 'isCleared' } as const, false)
@@ -104,10 +105,12 @@ const mend = (raw: unknown): Choice => {
     veil: VEILS.find(b => b.value === r.veil)?.value ?? FIRST.veil,
     decisions: DECISIONS.find(b => b.value === r.decisions)?.value ?? FIRST.decisions,
     steps: STEPS.find(b => b.value === r.steps)?.value ?? FIRST.steps,
+    speed: toSpeed(r.speed),
   }
 }
 
-// The scene's name carries the background, the motion and the theme ("lamp_on_neon-arcade"), so the drawing hook needs no stored value.
+// The scene's name carries the background, the motion, the speed in hundredths and the theme ("lamp_on_100_neon-arcade"),
+// so the drawing hook needs no stored value.
 const look = (c: Choice): ThemeSetArgs => {
   const colors = colorsFor(themeOf(c.theme)).theme
   // tint left out: the panels keep the look's own surface colour in each mode.
@@ -124,7 +127,7 @@ const look = (c: Choice): ThemeSetArgs => {
   // ground of their own. So a card is only as readable as the veil is strong; a mod cannot draw on those cards.
   const strength = { medium: 0.72, strong: 0.88, solid: 1 } as const
   const glass = c.veil === 'light' ? light : { blur: Math.max(light.blur, c.veil === 'medium' ? 8 : 14), opacity: strength[c.veil] }
-  return c.background === 'plain' ? { colors } : { colors, backdrop: { scene: `${c.background}_${c.motion}_${c.theme}`, glass } }
+  return c.background === 'plain' ? { colors } : { colors, backdrop: { scene: `${c.background}_${c.motion}_${Math.round(c.speed * 100)}_${c.theme}`, glass } }
 }
 
 type Steps = Plan['steps']
@@ -141,7 +144,7 @@ const stepsOf = (raw: unknown): Steps | null => {
 
 /** Every step done but the last, which is under way. */
 const lastOnly = (steps: Steps): boolean =>
-  steps.length > 0 && steps[steps.length - 1].status === 'in_progress' && steps.slice(0, -1).every(s => s.status === 'completed')
+  steps.length > 0 && steps.at(-1)?.status === 'in_progress' && steps.slice(0, -1).every(s => s.status === 'completed')
 
 /** The task list after one task-list tool call. */
 const heard = (tool: string, args: Record<string, unknown>, now: Plan | null): Plan | null => {
@@ -263,7 +266,7 @@ const pick = async ($: EngineInterface, patch: Partial<Choice>) => {
   }
   const now = await read($, choice)
   await $.store.set('choice', now)
-  if (patch.theme !== undefined || patch.background !== undefined || patch.motion !== undefined || patch.veil !== undefined) {
+  if (patch.theme !== undefined || patch.background !== undefined || patch.motion !== undefined || patch.veil !== undefined || patch.speed !== undefined) {
     const unpainted = colorsFor(themeOf(now.theme)).problems.find(line => line.startsWith("Desktop won't paint"))
     if (unpainted !== undefined) {
       $.ui.toast(unpainted)
@@ -273,6 +276,10 @@ const pick = async ($: EngineInterface, patch: Partial<Choice>) => {
   }
   return now
 }
+
+/** The speed bar's buttons: a step slower or faster, read at the press and not at the draw. */
+const slower = async ($: EngineInterface) => pick($, { speed: stepSpeed((await read($, choice)).speed, -1) })
+const faster = async ($: EngineInterface) => pick($, { speed: stepSpeed((await read($, choice)).speed, 1) })
 
 /** The picker's arrows: the preview moves to the theme before or after, wrapping round. */
 const stepBrowse = ($: EngineInterface, by: number) =>
@@ -410,10 +417,13 @@ export const register: Register = on => {
     const { Svg } = $.ui.resolve(e)
     const [head, motion, ...rest] = e.props.scene.split('_')
     const kind = KINDS.find(k => k === head) ?? 'lamp'
+    // a name from before the speed was kept has none: as drawn
+    const speed = rest.length > 1 && /^\d+$/.test(rest[0] ?? '') ? toSpeed(Number(rest.shift()) / 100) : 1
     const theme = themeOf(rest.join('_'))
     const isMoving = motion !== 'off'
+    const source = isMoving ? paced(backdrop(theme, kind, true), speedFor(kind, speed)) : backdrop(theme, kind, false)
 
-    return <Svg source={backdrop(theme, kind, isMoving)} alt={`${theme.label}: ${SHOWS[kind]}, ${isMoving ? 'slowly moving' : 'still'}`} isInteractive />
+    return <Svg source={source} alt={`${theme.label}: ${SHOWS[kind]}, ${isMoving ? 'slowly moving' : 'still'}`} isInteractive />
   })
 
   // Claude's replies over a drawn background. The app's veil behind the conversation is only a tint, so on a
@@ -584,7 +594,7 @@ export const register: Register = on => {
         </Box>
       )
     }
-    const { Box, Text, Select, Button, Svg } = $.ui.resolve(e)
+    const { Box, Text, Select, Button, Svg, Progress } = $.ui.resolve(e)
 
     return (
       <Box flexDirection="column" gap="md">
@@ -604,8 +614,13 @@ export const register: Register = on => {
         <Select key="theme" label="Theme" value={c.theme} options={THEMES.map(t => ({ value: t.id, label: t.label }))} onSelect={value => void pick($, { theme: themeOf(value).id })} />
         <Select key="background" label="Background" value={c.background} options={BACKGROUNDS} onSelect={value => void pick($, { background: mend({ background: value }).background })} />
         <Select key="motion" label="Motion in the background" value={c.motion} options={MOTIONS} onSelect={value => void pick($, { motion: mend({ motion: value }).motion })} />
+        <Box flexDirection="row" gap="sm">
+          <Button key="slower" label="−" variant="secondary" onPress={() => void slower($)} />
+          <Progress label="Animation speed" value={SPEEDS.indexOf(c.speed) + 1} max={SPEEDS.length} valueText={speedName(c.speed)} color={theme.dark.accent} />
+          <Button key="faster" label="+" variant="secondary" onPress={() => void faster($)} />
+        </Box>
         <Text dimColor size="caption">
-          The app plays a moving background only while it is safe and cheap to draw, and follows its own Motion setting.
+          The app plays a moving background only while it is safe and cheap to draw, and follows its own Motion setting. Speed changes how fast it moves, from a quarter to one and a half times as drawn (Vector tunnel stops at one and a quarter).
         </Text>
         <Select key="replies" label="Claude's replies" value={c.replies} options={REPLIES} onSelect={value => void pick($, { replies: mend({ replies: value }).replies })} />
         <Text dimColor size="caption">

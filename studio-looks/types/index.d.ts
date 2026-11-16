@@ -20,8 +20,10 @@ export type Veil = 'light' | 'medium' | 'strong' | 'solid'
 export type Decisions = 'mod' | 'app'
 /** How the bar shows the task list. 'list': every step on a line of its own under the bar. 'line': only the step under way, in the bar's label. */
 export type StepsView = 'list' | 'line'
+/** How fast a moving background plays: 1 is as drawn; ¼ to 1½ in quarter steps. */
+export type Speed = 0.25 | 0.5 | 0.75 | 1 | 1.25 | 1.5
 /** What the person picked. `theme` is a theme's id from the collection. */
-export type Choice = { theme: string; background: Background; bar: BarStyle; motion: Motion; replies: Replies; veil: Veil; decisions: Decisions; steps: StepsView }
+export type Choice = { theme: string; background: Background; bar: BarStyle; motion: Motion; replies: Replies; veil: Veil; decisions: Decisions; steps: StepsView; speed: Speed }
 /**
  * One piece of work running apart from the conversation, as the bar shows it: a command sent to the background, a
  * subagent, or another session this one started. `id` is the app's own id for it. 'done', 'failed' and 'stopped' are
