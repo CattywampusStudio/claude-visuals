@@ -22,7 +22,7 @@ Mods run with your own access to files and the network, so it is worth reading a
 ## Use
 
 - **The Looks pane** is where you choose. Pick a theme, then a background, and adjust the rest below them. Your pick is kept for your next session.
-- **The Looks button** above the message box reopens the pane if you close it.
+- **The Looks button**, at the right end of the band above the message box, reopens the pane if you close it.
 - **The `/looks` command** does the same by name: `/looks synthwave grid` applies a theme and a background, and `/looks off` puts the app back to its own colours.
 
 The look is drawn in the desktop app. A terminal session runs the mod but draws no look.
@@ -45,7 +45,10 @@ Neon Arcade, Midnight Pop, Workshop, Playground, Dusk, Backstage, Ember, Deep Se
 
 The picture at the top of the page is **Grid horizon**. The last choice is **Colours only**: the theme with no background.
 
-**A progress bar** above the message box follows Claude's task list while it works, drawn to match the background. You can swap it for the app's own bar or turn it off.
+**A progress bar** above the message box follows Claude's task list while it works, drawn to match the background. You can swap it for the app's own bar or turn it off. Around the bar:
+
+- **The steps** are listed under it: ✓ done, ▸ under way, · still to come. A long list shows the steps near the one under way and says how many more there are. The setting **Steps in the bar** can show only the step under way.
+- **A Background row** appears while work runs out of sight: a command left running, a subagent, another session Claude started. Each has a small mark in the theme's colours that says whether it is running, done, failed or stopped. The app tells the mod only that the work runs and how it ended, so there is no percentage. Finished rows clear when you send your next message.
 
 **Readable words over the background.** Three settings keep the conversation easy to read:
 
@@ -85,14 +88,25 @@ To switch the mod off without removing it, run `claude plugin disable studio-loo
 
 ## Change it or build your own
 
-The mod's code is in the `studio-looks` folder of this repository. With a copy of the repository, run these from its top folder:
+The mod's code is in the `studio-looks` folder of this repository. You only need this section to change the mod; installing it needs none of it.
+
+The look is drawn only in the desktop app, so run your copy there. First switch the installed copy off, so the two don't both load:
 
 ```
-claude --plugin-dir ./studio-looks
-claude plugin validate ./studio-looks
+claude plugin disable studio-looks@claude-visuals
 ```
 
-The first starts a session with your copy loaded; the second checks it. The official guide to writing mods is at [code.claude.com/docs/en/plugins/mods](https://code.claude.com/docs/en/plugins/mods).
+Then name your copy's folder in `~/.claude/settings.json`, under `env`, with the full path:
+
+```json
+{ "env": { "CLAUDE_CODE_PLUGIN_DIRS": "/path/to/claude-visuals/studio-looks" } }
+```
+
+Every new desktop session now runs your copy, and saving a file reloads it. To go back, remove that line and run `claude plugin enable studio-looks@claude-visuals`.
+
+In a terminal, `claude --plugin-dir ./studio-looks` loads your copy for one session. It runs the mod's hooks, commands and tests, but a terminal draws no look. To check your copy, run `claude plugin validate ./studio-looks` and `claude plugin test ./studio-looks`.
+
+The official guide to writing mods is at [code.claude.com/docs/en/plugins/mods](https://code.claude.com/docs/en/plugins/mods).
 
 One thing worth knowing before drawing a background of your own: the app animates only SVG it accepts, and draws anything else as a still picture with no error. The mod's tests check every background against the rules the app was using when they were written.
 

@@ -18,8 +18,16 @@ export type Replies = 'bubble' | 'plain'
 export type Veil = 'light' | 'medium' | 'strong' | 'solid'
 /** Who draws the card that closes a turn with a question. 'mod': this mod, on a solid panel above the message box. 'app': only the app's own. */
 export type Decisions = 'mod' | 'app'
+/** How the bar shows the task list. 'list': every step on a line of its own under the bar. 'line': only the step under way, in the bar's label. */
+export type StepsView = 'list' | 'line'
 /** What the person picked. `theme` is a theme's id from the collection. */
-export type Choice = { theme: string; background: Background; bar: BarStyle; motion: Motion; replies: Replies; veil: Veil; decisions: Decisions }
+export type Choice = { theme: string; background: Background; bar: BarStyle; motion: Motion; replies: Replies; veil: Veil; decisions: Decisions; steps: StepsView }
+/**
+ * One piece of work running apart from the conversation, as the bar shows it: a command sent to the background, a
+ * subagent, or another session this one started. `id` is the app's own id for it. 'done', 'failed' and 'stopped' are
+ * how it ended.
+ */
+export type Job = { id: string; kind: 'command' | 'agent' | 'session'; label: string; status: 'running' | 'done' | 'failed' | 'stopped' }
 /** The question a turn ended on, as the turn's wrap-up call gave it: what is now true, what is asked, and the answers offered. */
 export type Card = { recap: string; ask: string; answers: string[] }
 // `browse` is the id of the theme shown in the picker's preview, which may differ from the one in use until it is applied.
@@ -28,6 +36,6 @@ export type Plan = { steps: { content: string; status: 'pending' | 'in_progress'
 
 declare module 'claude-code' {
   interface PluginState {
-    'studio-looks': { choice: Shaped<Choice>; plan: Shaped<Plan | null>; browse: string; isCleared: boolean; card: Shaped<Card | null> }
+    'studio-looks': { choice: Shaped<Choice>; plan: Shaped<Plan | null>; browse: string; isCleared: boolean; card: Shaped<Card | null>; jobs: Shaped<Job[]> }
   }
 }

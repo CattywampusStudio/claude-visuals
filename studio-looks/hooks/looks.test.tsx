@@ -1,6 +1,6 @@
 import { expect, test } from 'claude-code/testing'
 
-import { preview, themedBar } from './bar.ts'
+import { jobMark, preview, themedBar } from './bar.ts'
 import { KINDS, backdrop } from './scene.ts'
 import { THEMES } from './themes.ts'
 
@@ -20,7 +20,7 @@ const PANE = {
 
 // `scenes` collects the scene of every look the mod sets, in order ("pixels_on_dusk"), or "none" for colours only.
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
-const engine = (on: Parameters<Extract<Parameters<typeof test>[1], (...args: any) => any>>[1], scenes: string[] = [], veils: number[] = []) => {
+const engine = (on: Parameters<Extract<Parameters<typeof test>[1], (...args: any) => any>>[1], scenes: string[] = [], veils: number[] = [], answers: (tool: string) => object = () => ({})) => {
   on('command.register', () => ({ value: { command: 'looks' } }))
   on('ui.open', () => ({ value: { isPlaced: true } }))
   on('theme.set', (_, e) => {
@@ -31,7 +31,7 @@ const engine = (on: Parameters<Extract<Parameters<typeof test>[1], (...args: any
   on('store.get', () => ({ value: undefined }))
   on('store.set', () => ({ value: undefined }))
   on('session.start', (_, e) => ({ cwd: e.cwd }))
-  on('tool.call', () => ({ result: {} }))
+  on('tool.call', (_, e) => ({ result: answers(e.tool) }))
 }
 
 // The desktop app only animates a background whose SVG its player accepts; anything else it draws still, with
@@ -269,4 +269,77 @@ test('the bar follows the task list', async ($, on) => {
   ui = await $.ui.mount({ ...BAND, surface: 'desktop' })
   expect((await ui.find({ type: 'Text', text: /done/ }))?.text).toBe('All 2 steps done')
   await ui.unmount()
+})
+
+test('the bar lists every step, or only the one under way when asked', async ($, on) => {
+  engine(on)
+  await $.session.start({ cwd: '/', surface: 'desktop', isInteractive: true })
+  await $.tool.call({ tool: 'mcp__ccd_turn__update_plan', items: [
+    { content: 'Mix the wax', status: 'completed' },
+    { content: 'Light the lamp', status: 'in_progress' },
+    { content: 'Watch it rise', status: 'pending' },
+  ] })
+
+  let ui = await $.ui.mount({ ...BAND, surface: 'desktop' })
+  expect((await ui.find({ type: 'Text', text: /^✓/ }))?.text).toBe('✓ Mix the wax')
+  expect((await ui.find({ type: 'Text', text: /^▸/ }))?.text).toBe('▸ Light the lamp')
+  expect((await ui.find({ type: 'Text', text: /^·/ }))?.text).toBe('· Watch it rise')
+  // the picker's button is in the band's first row, after the label
+  expect((await ui.find({ type: 'Button', key: 'looks' }))?.props.label).toBe('Looks')
+  await ui.unmount()
+
+  // a band with few rows shows the stretch around the step under way
+  ui = await $.ui.mount({ ...BAND, props: { ...BAND.props, maxRows: 5 }, surface: 'desktop' })
+  expect(await ui.find({ type: 'Text', text: /^✓/ })).toBeTruthy()
+  expect(await ui.find({ type: 'Text', text: /^·/ })).toBeFalsy()
+  expect((await ui.find({ type: 'Text', text: /more$/ }))?.text).toBe('and 2 more')
+  await ui.unmount()
+
+  const pane = await $.ui.mount({ ...PANE, surface: 'desktop' })
+  await $.ui.select({ plugin: 'studio-looks', key: 'steps', value: 'line' })
+  await pane.unmount()
+  ui = await $.ui.mount({ ...BAND, surface: 'desktop' })
+  expect(await ui.find({ type: 'Text', text: /^▸/ })).toBeFalsy()
+  expect((await ui.find({ type: 'Text', text: /Step/ }))?.text).toBe('Step 2 of 3: Light the lamp')
+  await ui.unmount()
+})
+
+test('work in the background gets a row that says how each piece stands', async ($, on) => {
+  engine(on, [], [], tool => (tool === 'Bash' ? { stdout: '', stderr: '', interrupted: false, backgroundTaskId: 'task-7' } : {}))
+  on('prompt.submit', (_, e) => ({ text: e.text }))
+  await $.session.start({ cwd: '/', surface: 'desktop', isInteractive: true })
+
+  // nothing in the background: no row
+  let ui = await $.ui.mount({ ...IDLE_BAND, surface: 'desktop' })
+  expect(await ui.find({ type: 'Text', text: /Background/ })).toBeFalsy()
+  await ui.unmount()
+
+  await $.tool.call({ tool: 'Bash', command: 'node audit.mjs', description: 'Run the audit', run_in_background: true })
+  ui = await $.ui.mount({ ...IDLE_BAND, surface: 'desktop' })
+  expect((await ui.find({ type: 'Text', text: /audit/ }))?.text).toBe('Run the audit · running')
+  expect((await ui.find({ type: 'Svg' }))?.props.alt).toBe('running')
+  await ui.unmount()
+
+  // the app's notice that it ended
+  await $.prompt.submit({ text: '<task-notification><task-id>task-7</task-id><status>failed</status></task-notification>', wait: false, origin: { kind: 'task-notification' } })
+  ui = await $.ui.mount({ ...IDLE_BAND, surface: 'desktop' })
+  expect((await ui.find({ type: 'Text', text: /audit/ }))?.text).toBe('Run the audit · failed')
+  await ui.unmount()
+
+  // the person's next message clears what has ended
+  await $.prompt.submit({ text: 'thanks', wait: false, origin: { kind: 'composer' } })
+  ui = await $.ui.mount({ ...IDLE_BAND, surface: 'desktop' })
+  expect(await ui.find({ type: 'Text', text: /audit/ })).toBeFalsy()
+  await ui.unmount()
+})
+
+test('a job mark is drawn for every state in every theme', () => {
+  for (const theme of THEMES) {
+    for (const status of ['running', 'done', 'failed', 'stopped'] as const) {
+      const svg = jobMark(theme, status)
+      expect(svg.startsWith('<svg')).toBe(true)
+      expect(/@media\(/.test(svg)).toBe(false)
+      expect(svg.includes('animation:go')).toBe(status === 'running')
+    }
+  }
 })

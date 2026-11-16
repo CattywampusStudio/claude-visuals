@@ -1,8 +1,8 @@
 import { atom, read, update } from 'claude-code'
-import type { EngineInterface, Register, ThemeSetArgs } from 'claude-code'
+import type { EngineInterface, Register, RenderChildren, ThemeSetArgs } from 'claude-code'
 
-import type { Background, BarStyle, Card, Choice, Decisions, Motion, Plan, Replies, Veil } from '../types'
-import { preview, themedBar } from './bar.ts'
+import type { Background, BarStyle, Card, Choice, Decisions, Job, Motion, Plan, Replies, StepsView, Veil } from '../types'
+import { jobMark, preview, themedBar } from './bar.ts'
 import { colorsFor } from './look.ts'
 import { KINDS, backdrop } from './scene.ts'
 import { THEMES } from './themes.ts'
@@ -73,14 +73,20 @@ const DECISIONS: readonly { value: Decisions; label: string }[] = [
   { value: 'mod', label: 'Solid, above the message box' },
   { value: 'app', label: "The app's own only" },
 ]
-const FIRST: Choice = { theme: 'neon-arcade', background: 'lamp', bar: 'lava', motion: 'on', replies: 'bubble', veil: 'medium', decisions: 'mod' }
+const STEPS: readonly { value: StepsView; label: string }[] = [
+  { value: 'list', label: 'Every step, listed under the bar' },
+  { value: 'line', label: 'Only the step under way' },
+]
+const FIRST: Choice = { theme: 'neon-arcade', background: 'lamp', bar: 'lava', motion: 'on', replies: 'bubble', veil: 'medium', decisions: 'mod', steps: 'list' }
 
-const choice = atom({ plugin: 'studio-looks', key: 'choice' } as const, FIRST, { shape: 'choice-7' })
+const choice = atom({ plugin: 'studio-looks', key: 'choice' } as const, FIRST, { shape: 'choice-8' })
 const card = atom({ plugin: 'studio-looks', key: 'card' } as const, null as Card | null, { shape: 'card-1' })
 // true after "/looks off", until the next pick: the app is back to its own look, so nothing of this mod's is drawn on it
 const cleared = atom({ plugin: 'studio-looks', key: 'isCleared' } as const, false)
 const browse = atom({ plugin: 'studio-looks', key: 'browse' } as const, FIRST.theme)
 const plan = atom({ plugin: 'studio-looks', key: 'plan' } as const, null as Plan | null, { shape: 'plan-1' })
+// work running apart from the conversation: commands in the background, subagents, sessions this one started
+const jobs = atom({ plugin: 'studio-looks', key: 'jobs' } as const, [] as Job[], { shape: 'jobs-1' })
 
 const themeOf = (id: string): Theme => THEMES.find(t => t.id === id) ?? THEMES[0]!
 
@@ -97,6 +103,7 @@ const mend = (raw: unknown): Choice => {
     replies: REPLIES.find(b => b.value === r.replies)?.value ?? FIRST.replies,
     veil: VEILS.find(b => b.value === r.veil)?.value ?? FIRST.veil,
     decisions: DECISIONS.find(b => b.value === r.decisions)?.value ?? FIRST.decisions,
+    steps: STEPS.find(b => b.value === r.steps)?.value ?? FIRST.steps,
   }
 }
 
@@ -161,6 +168,42 @@ const heard = (tool: string, args: Record<string, unknown>, now: Plan | null): P
   }
   return { steps }
 }
+
+const short = (text: string, most: number) => {
+  const one = text.replace(/\s+/g, ' ').trim()
+  return one.length > most ? `${one.slice(0, most - 1)}…` : one
+}
+
+/**
+ * The background work a tool call started, read from what the tool answered: a command the Bash tool moved to the
+ * background, or another session the app started for this one. Null for every other call.
+ */
+const startedBy = (tool: string, args: Record<string, unknown>, result: unknown): Job | null => {
+  const r = (result ?? {}) as Record<string, unknown>
+  if (tool === 'Bash' && typeof r.backgroundTaskId === 'string') {
+    return { id: r.backgroundTaskId, kind: 'command', label: short(String(args.description ?? args.command ?? 'Command'), 40), status: 'running' }
+  }
+  if (tool.endsWith('__start_session') && args.initiation !== 'own_initiative' && args.initiation !== 'offer') {
+    const id = /local_[A-Za-z0-9-]+/.exec(JSON.stringify(result ?? ''))?.[0]
+    return id === undefined ? null : { id, kind: 'session', label: short(String(args.title ?? 'Session'), 40), status: 'running' }
+  }
+  return null
+}
+
+const ENDINGS: Record<string, Job['status']> = { completed: 'done', failed: 'failed', killed: 'stopped', stopped: 'stopped' }
+
+/** The list after a notice that names a job: the job it names has ended, the way the notice says. */
+const ended = (now: Job[], notice: string): Job[] => {
+  const word = /<status>\s*([a-z_]+)/i.exec(notice)?.[1]?.toLowerCase() ?? 'completed'
+  return now.map(job => (job.status === 'running' && notice.includes(job.id) ? { ...job, status: ENDINGS[word] ?? 'done' } : job))
+}
+
+/** One more job, newest last; the list keeps the eight newest. */
+const withJob = (now: Job[], job: Job): Job[] => [...now.filter(j => j.id !== job.id), job].slice(-8)
+
+const JOB_WORDS: Record<Job['status'], string> = { running: 'running', done: 'done', failed: 'failed', stopped: 'stopped' }
+const JOB_SIGNS: Record<Job['status'], string> = { running: '◐', done: '✓', failed: '✕', stopped: '■' }
+const STEP_SIGNS: Record<Steps[number]['status'], string> = { completed: '✓', in_progress: '▸', pending: '·' }
 
 // The app's own actions on its card (commit, open a pull request) are the app's to run. Here the ones that
 // are also something to ask Claude for become a reply in words; the two that only the app can do are left out.
@@ -252,10 +295,9 @@ export const register: Register = on => {
     if (unpainted !== undefined) {
       $.ui.toast(unpainted)
     }
-    const set = await $.theme.set(look(stored))
-    if (!set.isDrawn) {
-      $.ui.status(set.reason)
-    }
+    // In a terminal nothing draws the look; the theme still stands for a desktop surface that attaches later,
+    // so there is nothing to tell the person.
+    await $.theme.set(look(stored))
     void $.ui.open({ id: PANE, title: TITLE })
 
     return next(e)
@@ -288,6 +330,45 @@ export const register: Register = on => {
         const asked = cardOf(args)
         await update($, card, () => asked)
       }
+
+      return next(e)
+    }
+    if (tool !== 'Bash' && tool !== 'TaskStop' && !tool.endsWith('__start_session')) {
+      return next(e)
+    }
+    // background work is known only by what the tool answers
+    const args = e as unknown as Record<string, unknown>
+    const out = await next(e)
+    const answered = (out as { result?: unknown }).result
+    const job = startedBy(tool, args, answered)
+    if (job !== null) {
+      await update($, jobs, now => withJob(now, job))
+    }
+    if (tool === 'TaskStop' && answered !== undefined) {
+      const id = String(args.task_id ?? args.shell_id ?? '')
+      await update($, jobs, now => now.map(j => (j.id === id && j.status === 'running' ? { ...j, status: 'stopped' as const } : j)))
+    }
+
+    return out
+  })
+
+  // A subagent is a job from its start to the end of its run.
+  on('agent.spawn', async ($, e, next) => {
+    const out = await next(e)
+    const id = (out as { agentId?: unknown }).agentId
+    if (typeof id === 'string') {
+      const label = short(String((e as { description?: unknown }).description ?? 'Agent'), 40)
+      await update($, jobs, now => withJob(now, { id, kind: 'agent', label, status: 'running' }))
+    }
+
+    return out
+  })
+
+  on('turn.complete', async ($, e, next) => {
+    const id = e.agentId
+    if (id !== undefined) {
+      const how = e.isAborted ? 'stopped' : 'done'
+      await update($, jobs, now => now.map(j => (j.id === id && j.status === 'running' ? { ...j, status: how as Job['status'] } : j)))
     }
 
     return next(e)
@@ -295,6 +376,18 @@ export const register: Register = on => {
 
   // A finished list leaves with the next prompt; an unfinished one stays for the work to go on.
   on('prompt.submit', async ($, e, next) => {
+    const from = (e.origin as { kind?: string } | undefined)?.kind
+    if (from !== 'composer' && from !== 'bridge') {
+      // a notice from the app: a background command or another session reporting back
+      await update($, jobs, now => ended(now, e.text))
+    }
+    if (from === 'task-notification') {
+      return next(e)
+    }
+    // the person has seen which jobs ended; only the running ones stay
+    if (from === 'composer' || from === 'bridge') {
+      await update($, jobs, now => now.filter(j => j.status === 'running'))
+    }
     await update($, plan, now => (now && now.steps.every(s => s.status === 'completed') ? null : now))
     // a new message answers or passes over whatever was asked
     await update($, card, () => null)
@@ -339,53 +432,78 @@ export const register: Register = on => {
     const list = await read($, plan)
     const asked = await read($, card)
     const isOff = await read($, cleared)
+    const running = await read($, jobs)
     const { Box, Text, Button, Progress } = $.ui.resolve(e)
-    // the small button that opens the picker; it stays when no work is running, so the picker is always one press away
+    const theme = themeOf(c.theme)
+    // the terminal draws no pictures: there a job's mark is a sign in text
+    const Mark = e.surface === 'terminal' ? null : $.ui.resolve(e).Svg
+    // the small button that opens the picker: always at the right end of the band's first row, working or not
     const looks = <Button key="looks" label="Looks" plain dimColor onPress={() => void $.ui.open({ id: PANE, title: TITLE })} />
+    const topRow = (left: RenderChildren) => (
+      <Box flexDirection="row" gap="sm" alignItems="center" justifyContent="space-between">
+        {left}
+        {looks}
+      </Box>
+    )
+    // Work running apart from the conversation, three at most with the newest last: a mark in the theme's colours,
+    // what it is, and how it stands. Ended ones stay until the person's next message.
+    const shown = running.slice(-3)
+    const jobsRow =
+      shown.length === 0 || isOff ? null : (
+        <Box key="jobs" flexDirection="row" gap="md" alignItems="center">
+          <Text dimColor size="caption">
+            {running.length > shown.length ? `Background (${running.length})` : 'Background'}
+          </Text>
+          {shown.map(job => (
+            <Box key={`job-${job.id}`} flexDirection="row" gap="xs" alignItems="center">
+              {Mark ? <Mark source={jobMark(theme, job.status)} alt={JOB_WORDS[job.status]} /> : <Text>{JOB_SIGNS[job.status]}</Text>}
+              <Text size="caption" dimColor={job.status !== 'running'}>
+                {job.label} · {JOB_WORDS[job.status]}
+              </Text>
+            </Box>
+          ))}
+        </Box>
+      )
     // The question the turn ended on, on a solid panel. The app draws its own such card in the conversation with
     // no ground of its own over a background, and a mod cannot draw on that one, so this one stands above the prompt.
     if (asked !== null && !e.props.hasSurvey && !e.props.isWorking && !isOff && c.decisions === 'mod' && e.surface !== 'terminal') {
       // the summary goes in when the band has the rows for it; the question and its answers always do
       const columns = Math.max(20, e.props.bodyColumns)
       const rowsFor = (text: string) => Math.ceil(text.length / columns)
-      const hasRecap = asked.recap !== '' && rowsFor(asked.recap) + rowsFor(asked.ask) + 4 <= e.props.maxRows
+      const hasRecap = asked.recap !== '' && rowsFor(asked.recap) + rowsFor(asked.ask) + 4 + (jobsRow ? 1 : 0) <= e.props.maxRows
 
       const first = asked.answers[0] ?? 'OK'
       const second = asked.answers[1] ?? 'Not now'
       const question = <Text bold>{asked.ask}</Text>
-      const answers = (
+      const answers = topRow(
         <Box flexDirection="row" gap="sm" alignItems="center">
           <Button key="answer-0" label={first} variant="primary" onPress={() => void answer($, first)} />
           <Button key="answer-1" label={second} variant="secondary" onPress={() => void answer($, second)} />
           <Button key="dismiss" label="Dismiss" plain dimColor onPress={() => void update($, card, () => null)} />
-          {looks}
-        </Box>
+        </Box>,
       )
 
-      return hasRecap ? (
+      return (
         <Box flexDirection="column" gap="sm" borderStyle="round" borderDimColor backgroundColor="userMessageBackground">
-          <Text dimColor>{asked.recap}</Text>
+          {hasRecap ? <Text dimColor>{asked.recap}</Text> : null}
           {question}
           {answers}
-        </Box>
-      ) : (
-        <Box flexDirection="column" gap="sm" borderStyle="round" borderDimColor backgroundColor="userMessageBackground">
-          {question}
-          {answers}
+          {jobsRow}
         </Box>
       )
     }
     if (e.props.hasSurvey || c.bar === 'off') {
       return next(e)
     }
-    const theme = themeOf(c.theme)
     if (list === null && !e.props.isWorking) {
       return (
-        <Box flexDirection="row" gap="sm" alignItems="center">
-          <Text dimColor size="caption">
-            {theme.label}
-          </Text>
-          {looks}
+        <Box flexDirection="column" gap="xs">
+          {topRow(
+            <Text dimColor size="caption">
+              {theme.label}
+            </Text>,
+          )}
+          {jobsRow}
         </Box>
       )
     }
@@ -393,11 +511,35 @@ export const register: Register = on => {
     const done = list ? list.steps.filter(s => s.status === 'completed').length : 0
     const current = list?.steps.find(s => s.status === 'in_progress')
     const label = list === null ? 'Working' : done >= total ? `All ${total} steps done` : current ? `Step ${done + 1} of ${total}: ${current.content}` : `${done} of ${total} steps done`
+    // Every step on a line of its own, when asked for and the band has the rows. A list too long for the band
+    // shows the stretch around the step under way, and says how many it leaves out.
+    const room = e.props.maxRows - 3 - (jobsRow ? 1 : 0)
+    const steps = list === null || c.steps !== 'list' || room < 2 ? [] : list.steps
+    const span = steps.length <= room ? steps.length : room - 1
+    const at = Math.max(0, steps.findIndex(s => s.status !== 'completed'))
+    const from = Math.max(0, Math.min(at - 1, steps.length - span))
+    const stepsList =
+      steps.length === 0 ? null : (
+        <Box key="steps" flexDirection="column">
+          {steps.slice(from, from + span).map((step, i) => (
+            <Text key={`step-${from + i}`} size="caption" bold={step.status === 'in_progress'} dimColor={step.status !== 'in_progress'}>
+              {STEP_SIGNS[step.status]} {step.content}
+            </Text>
+          ))}
+          {span < steps.length ? (
+            <Text key="step-more" size="caption" dimColor>
+              and {steps.length - span} more
+            </Text>
+          ) : null}
+        </Box>
+      )
 
     if (c.bar === 'native' || e.surface === 'terminal') {
       return (
         <Box flexDirection="column" gap="xs">
           {list === null ? <Progress label={label} /> : <Progress label={label} value={done} max={total} valueText={`${done} of ${total}`} color={e.surface === 'terminal' ? undefined : theme.dark.accent} />}
+          {stepsList}
+          {jobsRow}
           {looks}
         </Box>
       )
@@ -408,13 +550,14 @@ export const register: Register = on => {
 
     return (
       <Box flexDirection="column" gap="xs">
-        <Box flexDirection="row" gap="sm" alignItems="center">
+        {topRow(
           <Text dimColor size="caption">
             {label}
-          </Text>
-          {looks}
-        </Box>
+          </Text>,
+        )}
         <Svg source={themedBar(theme, c.background, fraction)} alt={list === null ? 'Working, no known end' : `${done} of ${total} steps done`} />
+        {stepsList}
+        {jobsRow}
       </Box>
     )
   })
@@ -473,6 +616,10 @@ export const register: Register = on => {
           The bar sits above the message box and follows the task list while Claude works. Press below to try it without waiting.
         </Text>
         <Button key="demo" label="Try the bar: next step" onPress={() => void update($, plan, demoNext)} />
+        <Select key="steps" label="Steps in the bar" value={c.steps} options={STEPS} onSelect={value => void pick($, { steps: mend({ steps: value }).steps })} />
+        <Text dimColor size="caption">
+          The bar can list every step of the task list, ticking each off, or name only the one under way. Work running in the background (a long command, a subagent, another session) gets a row of its own with a mark for running, done, failed or stopped.
+        </Text>
       </Box>
     )
   })

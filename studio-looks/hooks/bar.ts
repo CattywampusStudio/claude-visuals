@@ -159,6 +159,29 @@ export const neonBar = (theme: Theme, fraction: number | null): string => {
   )
 }
 
+/**
+ * The small mark beside a piece of background work, in the theme's colours: an arc going round while it runs, a
+ * filled disc with a tick when it is done, a ring with a cross when it failed, a hollow square when it was stopped.
+ */
+export const jobMark = (theme: Theme, status: 'running' | 'done' | 'failed' | 'stopped'): string => {
+  const style =
+    `<style>svg{${vars(theme.dark)}}@media (prefers-color-scheme:light){svg{${vars(theme.light)}}}` +
+    `.t{fill:none;stroke:var(--text);stroke-opacity:.22;stroke-width:2}.a{fill:none;stroke:var(--w1);stroke-width:2;stroke-linecap:round}` +
+    `.f{fill:var(--w2)}.k{fill:none;stroke:var(--ground);stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round}.x{fill:none;stroke:var(--text);stroke-width:1.6;stroke-linecap:round}` +
+    (status === 'running' ? `.go{transform-origin:7px 7px;animation:go 1.6s linear infinite}@keyframes go{to{transform:rotate(360deg)}}@media (prefers-reduced-motion:reduce){.go{animation:none}}` : '') +
+    `</style>`
+  const body =
+    status === 'running'
+      ? `<circle class="t" cx="7" cy="7" r="5"/><path class="a go" d="M7 2a5 5 0 0 1 5 5"/>`
+      : status === 'done'
+        ? `<circle class="f" cx="7" cy="7" r="6"/><path class="k" d="M4.2 7.2l2 2 3.6-4"/>`
+        : status === 'failed'
+          ? `<circle class="x" cx="7" cy="7" r="5.2"/><path class="x" d="M5 5l4 4M9 5l-4 4"/>`
+          : `<rect class="x" x="3" y="3" width="8" height="8" rx="1.5"/>`
+
+  return `<svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 14 14">${style}${body}</svg>`
+}
+
 const isScenery = (background: string): background is Scenery => Object.hasOwn(SCENERY, background)
 /** The scenes of squares and fine lines take the stepped cells; the pictures take the neon line. */
 const isMechanical = (background: string) => ['pixels', 'plotter', 'weave', 'glyphs', 'flock', 'ridges', 'circuit'].includes(background)
