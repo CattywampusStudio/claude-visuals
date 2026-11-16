@@ -32,6 +32,7 @@ const engine = (on: Parameters<Extract<Parameters<typeof test>[1], (...args: any
   on('store.set', () => ({ value: undefined }))
   on('session.start', (_, e) => ({ cwd: e.cwd }))
   on('tool.call', (_, e) => ({ result: answers(e.tool) }))
+  on('turn.complete', (_, e) => ({ text: e.answer }))
 }
 
 // The desktop app only animates a background whose SVG its player accepts; anything else it draws still, with
@@ -266,6 +267,26 @@ test('the bar follows the task list', async ($, on) => {
   await ui.unmount()
 
   await $.tool.call({ tool: 'mcp__ccd_turn__wrap_up', recap: 'done' })
+  ui = await $.ui.mount({ ...BAND, surface: 'desktop' })
+  expect((await ui.find({ type: 'Text', text: /done/ }))?.text).toBe('All 2 steps done')
+  await ui.unmount()
+})
+
+test('the last step is checked off when the turn ends, as the app does', async ($, on) => {
+  engine(on)
+  await $.session.start({ cwd: '/', surface: 'desktop', isInteractive: true })
+  await $.tool.call({ tool: 'mcp__ccd_turn__update_plan', items: [
+    { content: 'Mix the wax', status: 'in_progress' },
+    { content: 'Light the lamp', status: 'pending' },
+  ] })
+  // a turn that ends with steps still to come leaves them as they are
+  await $.turn.complete({ answer: '', durationMs: 1, isAborted: false, turnId: 't1', reason: 'completed' } as never)
+  let ui = await $.ui.mount({ ...BAND, surface: 'desktop' })
+  expect((await ui.find({ type: 'Text', text: /Step/ }))?.text).toBe('Step 1 of 2: Mix the wax')
+  await ui.unmount()
+
+  await $.tool.call({ tool: 'mcp__ccd_turn__update_plan', advance: true })
+  await $.turn.complete({ answer: '', durationMs: 1, isAborted: false, turnId: 't2', reason: 'completed' } as never)
   ui = await $.ui.mount({ ...BAND, surface: 'desktop' })
   expect((await ui.find({ type: 'Text', text: /done/ }))?.text).toBe('All 2 steps done')
   await ui.unmount()

@@ -139,6 +139,10 @@ const stepsOf = (raw: unknown): Steps | null => {
   })
 }
 
+/** Every step done but the last, which is under way. */
+const lastOnly = (steps: Steps): boolean =>
+  steps.length > 0 && steps[steps.length - 1].status === 'in_progress' && steps.slice(0, -1).every(s => s.status === 'completed')
+
 /** The task list after one task-list tool call. */
 const heard = (tool: string, args: Record<string, unknown>, now: Plan | null): Plan | null => {
   if (tool === 'TodoWrite') {
@@ -369,6 +373,10 @@ export const register: Register = on => {
     if (id !== undefined) {
       const how = e.isAborted ? 'stopped' : 'done'
       await update($, jobs, now => now.map(j => (j.id === id && j.status === 'running' ? { ...j, status: how as Job['status'] } : j)))
+    }
+    // The app checks off a list's last step itself when the turn ends normally, and no tool call says so.
+    if (id === undefined && !e.isAborted) {
+      await update($, plan, now => (now !== null && lastOnly(now.steps) ? { steps: now.steps.map(s => ({ ...s, status: 'completed' as const })) } : now))
     }
 
     return next(e)
