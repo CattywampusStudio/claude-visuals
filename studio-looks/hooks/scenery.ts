@@ -509,9 +509,10 @@ const flock = (theme: Theme, moving: boolean): string => {
     const th = 2 * Math.PI * (t + a.at)
     return [a.cx + a.ax * Math.sin(th + a.p1) + a.bx * Math.sin(3 * th + a.p2), a.cy + a.ay * Math.sin(2 * th + a.p3) + a.by * Math.cos(3 * th + a.p4) + a.cz * Math.sin(5 * th)]
   }
+  // one flock swings over each side of the window, where the chat does not cover it
   const FLOCKS: Flock[] = [
-    { at: 0, cx: 800, cy: 400, ax: 560, bx: 170, ay: 210, by: 110, cz: 46, p1: 0.3, p2: 1.1, p3: 0, p4: 0.5, ranks: 44, tail: 3.4, long: 230, fat: 116 },
-    { at: 0.37, cx: 800, cy: 450, ax: -500, bx: 210, ay: 230, by: -90, cz: 38, p1: 2.1, p2: 0.2, p3: 1.3, p4: 2.0, ranks: 30, tail: 2.5, long: 170, fat: 80 },
+    { at: 0, cx: 330, cy: 400, ax: 230, bx: 80, ay: 210, by: 110, cz: 46, p1: 0.3, p2: 1.1, p3: 0, p4: 0.5, ranks: 44, tail: 3.4, long: 230, fat: 116 },
+    { at: 0.37, cx: 1270, cy: 450, ax: -230, bx: 90, ay: 230, by: -90, cz: 38, p1: 2.1, p2: 0.2, p3: 1.3, p4: 2.0, ranks: 30, tail: 2.5, long: 170, fat: 80 },
   ]
   let css = '', birds = ''
   FLOCKS.forEach((f, fi) => {
@@ -579,7 +580,7 @@ const flock = (theme: Theme, moving: boolean): string => {
       css,
     body:
       `<rect class="dusk" x="-400" y="300" width="${W + 800}" height="${H - 300 + 400}" fill="url(#dusk)"/>` +
-      `<circle class="low" cx="1140" cy="880" r="330" fill="url(#low)"/>` +
+      `<circle class="low" cx="1340" cy="880" r="330" fill="url(#low)"/>` +
       `<path class="far" d="${trees(900, 20, 96, 24, 7)}"/><path class="near" d="${trees(948, 12, 70, 16, 19)}"/>` +
       `<g class="birds">${birds}</g>`,
   })
@@ -592,6 +593,8 @@ const nebula = (theme: Theme, moving: boolean): string => {
   // a point on the band: u along it (-1 to 1), v across it
   const band = (u: number, v: number): [number, number] => [Math.round(800 + u * 760 * cos - v * sin), Math.round(500 + u * 760 * sin + v * cos)]
   const gauss = () => (rand() + rand() + rand() - 1.5) / 1.5
+  // along the band but out toward either end, past the chat in the middle
+  const out = (end: number) => (rand() < 0.5 ? -1 : 1) * (0.42 + rand() * (end - 0.42))
 
   let stars = ''
   ;([[170, 0.5, 1.1, 0.5], [90, 0.8, 1.5, 0.7], [36, 1.2, 2.1, 0.95]] as [number, number, number, number][]).forEach(([count, small, big, bright], layer) => {
@@ -605,8 +608,8 @@ const nebula = (theme: Theme, moving: boolean): string => {
 
   let clouds = ''
   for (let i = 0; i < 30; i++) {
-    const u = (rand() * 2 - 1) * 1.12, [x, y] = band(u, gauss() * 200)
-    const wide = 1 - Math.min(1, Math.abs(u)) * 0.38
+    const u = out(1.12), [x, y] = band(u, gauss() * 200)
+    const wide = 1 - Math.max(0, Math.abs(u) - 0.5) * 0.5
     const rx = Math.round((170 + rand() * 300) * wide), ry = Math.round((80 + rand() * 150) * wide)
     clouds += `<g transform="translate(${x} ${y}) rotate(${Math.round(TILT + (rand() - 0.5) * 70)})"><ellipse class="cl" rx="${rx}" ry="${ry}" fill="url(#n${i % 4})" style="--dx:${Math.round((rand() - 0.5) * 70)}px;--dy:${Math.round((rand() - 0.5) * 44)}px;--lo:${n2(0.45 + rand() * 0.25)};opacity:${n2(0.75)};animation-duration:${Math.round(26 + rand() * 40)}s;animation-delay:-${Math.round(rand() * 60)}s"/></g>`
   }
@@ -614,14 +617,14 @@ const nebula = (theme: Theme, moving: boolean): string => {
   const sheet = (count: number, seedCls: string): string => {
     let s = ''
     for (let i = 0; i < count; i++) {
-      const u = (rand() * 2 - 1) * 1.05, [x, y] = band(u, gauss() * 150)
+      const u = out(1.05), [x, y] = band(u, gauss() * 150)
       s += `<ellipse transform="translate(${x} ${y}) rotate(${Math.round(TILT + (rand() - 0.5) * 50)})" rx="${Math.round(140 + rand() * 260)}" ry="${Math.round(8 + rand() * 20)}" fill="url(#n${Math.floor(rand() * 4)})" opacity="${n2(0.3 + rand() * 0.3)}"/>`
     }
     return `<g class="${seedCls}">${s}</g>`
   }
   let lanes = ''
   for (let i = 0; i < 9; i++) {
-    const u = (rand() * 2 - 1) * 0.95, [x, y] = band(u, (rand() - 0.5) * 170)
+    const u = out(0.95), [x, y] = band(u, (rand() - 0.5) * 170)
     lanes += `<g transform="translate(${x} ${y}) rotate(${Math.round(TILT + (rand() - 0.5) * 36)})"><ellipse class="ln" rx="${Math.round(200 + rand() * 240)}" ry="${Math.round(26 + rand() * 44)}" fill="url(#dk)" style="--dx:${Math.round((rand() - 0.5) * 80)}px;animation-duration:${Math.round(40 + rand() * 40)}s;animation-delay:-${Math.round(rand() * 60)}s"/></g>`
   }
   let flares = ''
@@ -629,7 +632,7 @@ const nebula = (theme: Theme, moving: boolean): string => {
     const x = Math.round(80 + rand() * (W - 160)), y = Math.round(60 + rand() * (H - 120)), len = Math.round(14 + rand() * 22)
     flares += `<g transform="translate(${x} ${y})"><g class="fl" style="animation-duration:${n1(4 + rand() * 5)}s;animation-delay:-${n1(rand() * 8)}s"><path d="M${-len} 0H${len}M0 ${-len}V${len}"/><circle r="${n1(1.8 + rand() * 1.4)}"/></g></g>`
   }
-  const [cx, cy] = band(-0.08, 0)
+  const cores = [band(-0.7, 0), band(0.72, 0)]
   return shell(theme, moving, {
     dark: '--neb:1;--star:1;--hot:var(--text)',
     light: '--neb:.62;--star:.55;--hot:var(--w3)',
@@ -654,7 +657,7 @@ const nebula = (theme: Theme, moving: boolean): string => {
     body:
       `<g class="sky">${stars}</g>` +
       `<g class="neb">${clouds}${sheet(16, 'sh0')}${sheet(14, 'sh1')}${lanes}` +
-      `<ellipse class="core" transform="translate(${cx} ${cy}) rotate(${TILT})" rx="190" ry="110" fill="url(#core)"/></g>` +
+      cores.map(([cx, cy], i) => `<ellipse class="core" transform="translate(${cx} ${cy}) rotate(${TILT})" rx="${i ? 150 : 180}" ry="${i ? 90 : 105}" fill="url(#core)"${i ? ' style="animation-delay:-5s"' : ''}/>`).join('') + `</g>` +
       `<g class="sky">${flares}</g>` +
       `<g class="shoot" style="transform:translate(620px,250px);opacity:0"><line x1="150" y1="-64" x2="0" y2="0" stroke="url(#trail)" stroke-width="2.4" stroke-linecap="round"/></g>`,
   })
@@ -664,7 +667,9 @@ const nebula = (theme: Theme, moving: boolean): string => {
 const ridges = (theme: Theme, moving: boolean): string => {
   const rand = seeded(131)
   const ROWS = 25, TOP = 300, GAP = 26
-  const env = (x: number) => Math.exp(-(((x - 800) / 370) ** 2))
+  // the peaks rise either side of the window, where the conversation column leaves the background in view
+  const SIDES = [270, 1330]
+  const env = (x: number) => Math.max(...SIDES.map(c => Math.exp(-(((x - c) / 210) ** 2))))
   let rows = ''
   for (let r = 0; r < ROWS; r++) {
     const y = TOP + r * GAP
@@ -673,7 +678,7 @@ const ridges = (theme: Theme, moving: boolean): string => {
     for (let x = -188; x <= W + 200; x += 12) { const shake = (rand() - 0.5) * 3; if ((x + 188) % 24) base += `L${x} ${n1(y + shake)}` }
     let bumps = ''
     const count = 7 + Math.floor(rand() * 3)
-    const xs = Array.from({ length: count }, () => 800 + (rand() + rand() + rand() - 1.5) * 470).sort((a, b) => a - b)
+    const xs = Array.from({ length: count }, (_, i) => SIDES[i % 2] + (rand() + rand() + rand() - 1.5) * 300).sort((a, b) => a - b)
     for (const x of xs) {
       const half = 34 + rand() * 78, tall = (16 + 150 * env(x)) * (0.45 + rand() * 0.75)
       let d = `M${n1(-half)} 0`
@@ -698,7 +703,7 @@ const ridges = (theme: Theme, moving: boolean): string => {
       `.scan{animation:scan 18s linear infinite}@keyframes scan{from{transform:translateX(-80px)}to{transform:translateX(1680px)}}` +
       `.tk{stroke:var(--text);stroke-width:1.5;opacity:.3}`,
     body:
-      `<ellipse cx="800" cy="560" rx="760" ry="430" fill="url(#rise)"/>` +
+      SIDES.map(c => `<ellipse cx="${c}" cy="560" rx="420" ry="430" fill="url(#rise)"/>`).join('') +
       `<g class="rows">${rows}</g>` +
       `<g class="tk">${ticks}<path d="M60 956H1540"/></g>` +
       `<g class="scan" style="transform:translateX(520px)"><rect class="t" x="0" y="250" width="1.5" height="706" opacity=".22"/><rect class="c3" x="-4" y="951" width="9.5" height="9.5"/></g>`,
@@ -709,27 +714,27 @@ const ridges = (theme: Theme, moving: boolean): string => {
 const circuit = (theme: Theme, moving: boolean): string => {
   const rand = seeded(157)
   const P = 16, C = 36
-  const CHIPS: [number, number, number, number, string][] = [[640, 360, 320, 280, 'U1'], [180, 160, 200, 140, 'U2'], [1220, 140, 220, 160, 'U3'], [200, 700, 220, 160, 'U4'], [1180, 690, 220, 160, 'U5']]
+  // a main chip on each side of the window, where the chat does not cover it, with a bus between them under the chat
+  const CHIPS: [number, number, number, number, string][] = [[70, 360, 280, 260, 'U1'], [1250, 380, 280, 260, 'U2'], [140, 90, 180, 120, 'U3'], [1290, 80, 200, 130, 'U4'], [120, 800, 200, 130, 'U5'], [1270, 790, 200, 130, 'U6']]
   const lanes: [number, number][][] = []
   // across then up or down, the corner cut at 45 degrees; lanes of a bundle keep their distance through the turn
   const hv = (x0: number, y0: number, x1: number, y2: number, sx: number, sy: number, n: number) => { for (let k = 0; k < n; k++) { const y = y0 + sy * k * P, x = x1 - sx * k * P; lanes.push([[x0, y], [x - sx * C, y], [x, y + sy * C], [x, y2]]) } }
   const straight = (x0: number, y0: number, x1: number, y1: number, dx: number, dy: number, n: number) => { for (let k = 0; k < n; k++) lanes.push([[x0 + dx * k, y0 + dy * k], [x1 + dx * k, y1 + dy * k]]) }
-  hv(380, 190, 760, 360, 1, 1, 5)
-  hv(1220, 180, 860, 360, -1, 1, 5)
-  hv(420, 800, 740, 640, 1, -1, 5)
-  hv(1180, 800, 860, 640, -1, -1, 5)
-  hv(960, 524, 1548, -60, 1, -1, 4)
-  straight(640, 452, -60, 452, 0, P, 4)
-  straight(212, 160, 212, -60, P, 0, 6)
-  straight(180, 196, -60, 196, 0, P, 4)
-  straight(200, 740, -60, 740, 0, P, 5)
-  straight(232, 860, 232, 1060, P, 0, 6)
-  straight(1400, 720, 1660, 720, 0, P, 6)
-  straight(1212, 850, 1212, 1060, P, 0, 5)
-  straight(1440, 180, 1660, 180, 0, P, 4)
-  straight(1252, 140, 1252, -60, P, 0, 7)
-  straight(736, 640, 736, 1060, P, 0, 3)
-  straight(832, 360, 832, -60, P, 0, 3)
+  straight(359, 440, 1241, 440, 0, P, 6)
+  straight(172, 351, 172, 219, P, 0, 6)
+  straight(156, 629, 156, 791, P, 0, 6)
+  straight(1316, 371, 1316, 219, P, 0, 6)
+  straight(1300, 649, 1300, 781, P, 0, 6)
+  straight(196, 81, 196, -60, P, 0, 6)
+  straight(152, 939, 152, 1060, P, 0, 6)
+  straight(1324, 71, 1324, -60, P, 0, 7)
+  straight(1300, 929, 1300, 1060, P, 0, 6)
+  straight(1539, 560, 1660, 560, 0, P, 4)
+  straight(61, 520, -60, 520, 0, P, 5)
+  hv(329, 180, 640, -60, 1, -1, 4)
+  hv(1281, 180, 960, -60, -1, -1, 4)
+  hv(329, 850, 640, 1060, 1, 1, 4)
+  hv(1261, 850, 960, 1060, -1, 1, 4)
 
   const len = (pts: [number, number][]) => pts.slice(1).reduce((s, p, i) => { const q = pts[i] ?? p; return s + Math.hypot(p[0] - q[0], p[1] - q[1]) }, 0)
   let traces = '', pulses = '', ends = ''
@@ -750,7 +755,7 @@ const circuit = (theme: Theme, moving: boolean): string => {
   }
   // small parts in the open board: a body between two pads, with a name beside it
   let parts = ''
-  const SPOTS: [number, number][] = [[470, 330], [540, 590], [1060, 420], [1090, 600], [470, 930], [1010, 900], [1500, 400], [90, 400], [90, 560], [1040, 80], [520, 90], [1500, 900], [330, 600], [1300, 420], [1420, 560]]
+  const SPOTS: [number, number][] = [[60, 280], [390, 300], [390, 700], [60, 720], [440, 580], [400, 960], [1540, 290], [1190, 300], [1170, 600], [1190, 720], [1560, 690], [1560, 960], [800, 300], [700, 650], [900, 760]]
   SPOTS.forEach(([x, y], i) => {
     const up = i % 3 === 0
     parts += `<g transform="translate(${x} ${y})${up ? ' rotate(90)' : ''}"><rect class="pad" x="-22" y="-7" width="10" height="14"/><rect class="pad" x="12" y="-7" width="10" height="14"/><rect class="body" x="-12" y="-6" width="24" height="12" rx="2"/></g><text class="lb sm" x="${x + (up ? 14 : -22)}" y="${y + (up ? 4 : -14)}">${i % 2 ? 'C' : 'R'}${i + 1}</text>`
@@ -775,8 +780,8 @@ const circuit = (theme: Theme, moving: boolean): string => {
     body:
       `<rect x="-400" y="-400" width="${W + 800}" height="${H + 800}" fill="url(#holes)" style="opacity:var(--board)"/>` +
       `<g class="trc">${traces}</g><g class="via">${ends}</g>${parts}${chips}` +
-      `<rect x="716" y="426" width="168" height="148" rx="6" style="fill:color-mix(in srgb,var(--ground) 70%,var(--text))"/><circle class="die" cx="800" cy="500" r="74" fill="url(#die)"/>` +
-      `<circle class="led c1" cx="356" cy="184" r="4"/><circle class="led c3" cx="1416" cy="166" r="4" style="animation-delay:-1.1s"/><circle class="led c0" cx="396" cy="724" r="4" style="animation-delay:-.6s"/><circle class="led c1" cx="1376" cy="714" r="4" style="animation-delay:-1.7s"/>` +
+      [[210, 490], [1390, 510]].map(([x, y], i) => `<rect x="${x - 70}" y="${y - 62}" width="140" height="124" rx="6" style="fill:color-mix(in srgb,var(--ground) 70%,var(--text))"/><circle class="die" cx="${x}" cy="${y}" r="64" fill="url(#die)"${i ? ' style="animation-delay:-2.5s"' : ''}/>`).join('') +
+      `<circle class="led c1" cx="380" cy="340" r="4"/><circle class="led c3" cx="1560" cy="350" r="4" style="animation-delay:-1.1s"/><circle class="led c0" cx="380" cy="640" r="4" style="animation-delay:-.6s"/><circle class="led c1" cx="1560" cy="660" r="4" style="animation-delay:-1.7s"/>` +
       `<g>${pulses}</g>`,
   })
 }
