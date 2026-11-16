@@ -406,8 +406,7 @@ test('a speed changes only the timings of a scene', () => {
   }
 })
 
-test('the tunnel plays no faster than 1¼×, every other background up to 1½×', () => {
-  expect(speedFor('tunnel', 1.5)).toBe(1.25)
-  expect(speedFor('tunnel', 0.5)).toBe(0.5)
-  for (const kind of KINDS.filter(k => k !== 'tunnel')) expect(speedFor(kind, 1.5)).toBe(1.5)
+test('the tunnel and the flock play no faster than 1¼×, every other background up to 1½×', () => {
+  for (const kind of ['tunnel', 'flock']) { expect(speedFor(kind, 1.5)).toBe(1.25); expect(speedFor(kind, 0.5)).toBe(0.5) }
+  for (const kind of KINDS.filter(k => k !== 'tunnel' && k !== 'flock')) expect(speedFor(kind, 1.5)).toBe(1.5)
 })

@@ -1,6 +1,6 @@
 {
   "name": "studio-looks",
-  "version": "0.12.0",
+  "version": "0.12.1",
   "description": "Pick the Claude desktop app's look from a collection of themes: colours, a moving background (a lava lamp, a synthwave grid, a night city, a nebula, a flock of pixels and more) and a matching progress bar above the message box. Unofficial: made for fun by Cattywampus Studio, not affiliated with Anthropic.",
   "author": { "name": "Cattywampus Studio" },
   "license": "MIT",

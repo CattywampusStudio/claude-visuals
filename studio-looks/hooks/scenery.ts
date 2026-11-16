@@ -509,10 +509,10 @@ const flock = (theme: Theme, moving: boolean): string => {
     const th = 2 * Math.PI * (t + a.at)
     return [a.cx + a.ax * Math.sin(th + a.p1) + a.bx * Math.sin(3 * th + a.p2), a.cy + a.ay * Math.sin(2 * th + a.p3) + a.by * Math.cos(3 * th + a.p4) + a.cz * Math.sin(5 * th)]
   }
-  // one flock swings over each side of the window, where the chat does not cover it
+  // one flock sweeps the whole window, passing behind the chat and out the other side; a second one crossing it made
+  // the app's flash check run close to its limit
   const FLOCKS: Flock[] = [
-    { at: 0, cx: 330, cy: 400, ax: 230, bx: 80, ay: 210, by: 110, cz: 46, p1: 0.3, p2: 1.1, p3: 0, p4: 0.5, ranks: 44, tail: 3.4, long: 230, fat: 116 },
-    { at: 0.37, cx: 1270, cy: 450, ax: -230, bx: 90, ay: 230, by: -90, cz: 38, p1: 2.1, p2: 0.2, p3: 1.3, p4: 2.0, ranks: 30, tail: 2.5, long: 170, fat: 80 },
+    { at: 0, cx: 800, cy: 400, ax: 560, bx: 170, ay: 210, by: 110, cz: 46, p1: 0.3, p2: 1.1, p3: 0, p4: 0.5, ranks: 44, tail: 3.4, long: 230, fat: 116 },
   ]
   let css = '', birds = ''
   FLOCKS.forEach((f, fi) => {
@@ -595,7 +595,7 @@ const flock = (theme: Theme, moving: boolean): string => {
       css,
     body:
       `<rect class="dusk" x="-400" y="300" width="${W + 800}" height="${H - 300 + 400}" fill="url(#dusk)"/>` +
-      `<circle class="low" cx="1340" cy="880" r="330" fill="url(#low)"/>` +
+      `<circle class="low" cx="1140" cy="880" r="330" fill="url(#low)"/>` +
       `<path class="far" d="${trees(900, 20, 96, 24, 7)}"/><path class="near" d="${trees(948, 12, 70, 16, 19)}"/>` +
       `<g class="birds">${birds}</g>`,
   })

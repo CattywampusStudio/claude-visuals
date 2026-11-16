@@ -620,7 +620,7 @@ export const register: Register = on => {
           <Button key="faster" label="+" variant="secondary" onPress={() => void faster($)} />
         </Box>
         <Text dimColor size="caption">
-          The app plays a moving background only while it is safe and cheap to draw, and follows its own Motion setting. Speed changes how fast it moves, from a quarter to one and a half times as drawn (Vector tunnel stops at one and a quarter).
+          The app plays a moving background only while it is safe and cheap to draw, and follows its own Motion setting. Speed changes how fast it moves, from a quarter to one and a half times as drawn (Vector tunnel and Murmuration stop at one and a quarter).
         </Text>
         <Select key="replies" label="Claude's replies" value={c.replies} options={REPLIES} onSelect={value => void pick($, { replies: mend({ replies: value }).replies })} />
         <Text dimColor size="caption">
