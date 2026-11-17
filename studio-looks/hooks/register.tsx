@@ -22,7 +22,6 @@ const BACKGROUNDS: readonly { value: Background; label: string }[] = [
   { value: 'city', label: 'Night city' },
   { value: 'plotter', label: 'Plotter proof' },
   { value: 'weave', label: 'Loom' },
-  { value: 'glyphs', label: 'Glyph field' },
   { value: 'flock', label: 'Murmuration' },
   { value: 'nebula', label: 'Nebula' },
   { value: 'ridges', label: 'Signal ridges' },
@@ -41,7 +40,6 @@ const SHOWS: Record<Exclude<Background, 'plain'>, string> = {
   city: 'a city of towers at night with lit windows, neon signs and rain',
   plotter: 'blocks being hatched line by line, as a pen plotter draws',
   weave: 'a dotted cloth being woven row by row',
-  glyphs: 'a field of small mechanical marks',
   flock: 'flocks of square pixels streaming and turning together over a treeline',
   nebula: 'clouds of colour along a band of stars',
   ridges: 'stacked rows of a trace with peaks that swell and sink',
@@ -49,7 +47,7 @@ const SHOWS: Record<Exclude<Background, 'plain'>, string> = {
   tunnel: 'frames of light coming toward you down a square tunnel',
 }
 // Backgrounds of fine lines or small squares, and backgrounds that are pictures: each kind gets its own lightest veil.
-const FINE: readonly Background[] = ['pixels', 'plotter', 'weave', 'glyphs', 'flock', 'ridges', 'circuit']
+const FINE: readonly Background[] = ['pixels', 'plotter', 'weave', 'flock', 'ridges', 'circuit']
 const DRAWN: readonly Background[] = ['rain', 'grid', 'sunset', 'city', 'nebula', 'tunnel']
 const BARS: readonly { value: BarStyle; label: string }[] = [
   { value: 'lava', label: 'Matches the background' },
@@ -296,7 +294,7 @@ const useBrowsed = async ($: EngineInterface) => {
 
 export const register: Register = on => {
   on('session.start', async ($, e, next) => {
-    await $.command.register({ name: 'looks', description: 'Pick the app look: theme, background and progress bar', argumentHint: '[theme] [lamp|soft|pixels|rain|grid|sunset|city|plotter|weave|glyphs|flock|nebula|ridges|circuit|tunnel|plain] [off]' })
+    await $.command.register({ name: 'looks', description: 'Pick the app look: theme, background and progress bar', argumentHint: '[theme] [lamp|soft|pixels|rain|grid|sunset|city|plotter|weave|flock|nebula|ridges|circuit|tunnel|plain] [off]' })
     const stored = mend(await $.store.get('choice'))
     await update($, choice, () => stored)
     await update($, cleared, () => false)
@@ -421,7 +419,8 @@ export const register: Register = on => {
     const speed = rest.length > 1 && /^\d+$/.test(rest[0] ?? '') ? toSpeed(Number(rest.shift()) / 100) : 1
     const theme = themeOf(rest.join('_'))
     const isMoving = motion !== 'off'
-    const source = isMoving ? paced(backdrop(theme, kind, true), speedFor(kind, speed)) : backdrop(theme, kind, false)
+    const pace = speedFor(kind, speed)
+    const source = isMoving ? paced(backdrop(theme, kind, true, pace), pace) : backdrop(theme, kind, false)
 
     return <Svg source={source} alt={`${theme.label}: ${SHOWS[kind]}, ${isMoving ? 'slowly moving' : 'still'}`} isInteractive />
   })

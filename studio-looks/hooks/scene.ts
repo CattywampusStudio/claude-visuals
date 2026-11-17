@@ -36,11 +36,51 @@ const BLOBS: [number, number, number, number, number, number, number, number][] 
 
 const vars = (m: Mode, wax: number) => `--ground:${m.ground};${m.washes.map((c, i) => `--w${i}:${c}`).join(';')};--wax:${wax}`
 
+// The lava lamp's filter is the costliest thing any background draws, and it runs again whenever anything in the wax
+// changes. So the wax changes only on a shared beat, 20 times a second, and the filter runs a third as often as it
+// would at the screen's 60. The blobs keep their eased path, sampled into even stops, each crossed in whole beats.
+// Durations are whole multiples of 4.8 s and delays of 0.6 s, so every speed's scaled timings stay exact and every
+// blob keeps changing on the same beat. Below 1x the counts of beats grow, so the beat stays 20 a second.
+const BEAT = 0.05
+const STOPS = 32
+const GLOW_BEATS = 222
+/** Beats per beat-length at this speed: 1 at 1x and faster, more below so the beat stays the same in real time. */
+const hold = (speed: number) => (speed < 1 ? Math.round((1 / speed) * 3) / 3 : 1)
+// CSS ease-in-out, y for a given x
+const ease = (t: number) => {
+  let lo = 0, hi = 1
+  for (let i = 0; i < 30; i++) { const m = (lo + hi) / 2; if (3 * 0.42 * m * (1 - m) ** 2 + 3 * 0.58 * m * m * (1 - m) + m ** 3 < t) lo = m; else hi = m }
+  const m = (lo + hi) / 2
+  return 3 * 0.58 * m * m * (1 - m) + m ** 3
+}
+// the float path as numbers: at, share of dx, share of dy, scale x, scale y
+const FLOAT = [[0, 0, 0, 1, 1], [0.4, 1, 0.4, 0.86, 1.2], [0.75, -1, 0.75, 0.93, 1.1], [1, 0, 1, 1.06, 0.92]] as const
+const r4 = (n: number) => +n.toFixed(4)
+const beatFloat = (): string => {
+  let kf = ''
+  for (let k = 0; k <= STOPS; k++) {
+    const p = k / STOPS
+    let i = 0
+    while (i < FLOAT.length - 2 && p > FLOAT[i + 1]![0]) i++
+    const a = FLOAT[i]!, b = FLOAT[i + 1]!, e = ease((p - a[0]) / (b[0] - a[0]))
+    const [, x, y, sx, sy] = a.map((v, j) => v + (b[j]! - v) * e)
+    kf += `${r4(p * 100)}%{transform:translate(calc(var(--dx)*${r4(x!)}),calc(var(--dy)*${r4(y!)})) scale(${r4(sx!)},${r4(sy!)})}`
+  }
+  return kf
+}
+const beatTiming = (dur: number, delay: number, speed: number): string => {
+  const per = Math.max(3, Math.round(dur / STOPS / BEAT / 3) * 3) // beats per stop, a multiple of 3
+  return `;animation-duration:${r4(per * STOPS * BEAT)}s;animation-delay:-${r4(Math.round(delay / 0.6) * 0.6)}s;animation-timing-function:steps(${per * hold(speed)})`
+}
+
 // Squares and symbols at rest: the same drawing with its animations switched off.
 const atRest = (svg: string): string => svg.replace(/<\/svg>\s*$/, `<style>*{animation:none!important}</style></svg>`)
 
-/** The background behind the chat: a scene, moving or at rest. */
-export const backdrop = (theme: Theme, kind: Kind, moving: boolean): string => {
+/**
+ * The background behind the chat: a scene, moving or at rest. `speed` is the speed it will be played at (its timings are
+ * scaled afterwards by pace.ts); only the lava lamp needs to know it, to keep its redraw beat steady.
+ */
+export const backdrop = (theme: Theme, kind: Kind, moving: boolean, speed = 1): string => {
   if (kind === 'pixels') return moving ? pixels(theme) : atRest(pixels(theme))
   if (kind === 'rain') return moving ? rain(theme) : atRest(rain(theme))
   if (kind !== 'lamp' && kind !== 'soft') return SCENERY[kind](theme, moving)
@@ -55,10 +95,14 @@ export const backdrop = (theme: Theme, kind: Kind, moving: boolean): string => {
     `.wax{opacity:var(--wax)}` +
     `.b{transform-box:fill-box;transform-origin:50% 50%}` +
     (moving
-      ? `.b{animation:float 40s ease-in-out infinite alternate}` +
-        `@keyframes float{0%{transform:translate(0,0) scale(1,1)}40%{transform:translate(var(--dx),calc(var(--dy)*.4)) scale(.86,1.2)}75%{transform:translate(calc(var(--dx)*-1),calc(var(--dy)*.75)) scale(.93,1.1)}100%{transform:translate(0,var(--dy)) scale(1.06,.92)}}` +
-        `.glow{animation:breathe 11s ease-in-out infinite alternate}@keyframes breathe{from{opacity:.45}to{opacity:.85}}` +
-        `@media (prefers-reduced-motion:reduce){.b,.glow{animation:none}}`
+      ? goo
+        ? `.b{animation:float 40s linear infinite alternate}@keyframes float{${beatFloat()}}` +
+          `.glow{animation:breathe ${r4(GLOW_BEATS * BEAT)}s steps(${GLOW_BEATS * hold(speed)}) infinite alternate}@keyframes breathe{from{opacity:.45}to{opacity:.85}}` +
+          `@media (prefers-reduced-motion:reduce){.b,.glow{animation:none}}`
+        : `.b{animation:float 40s ease-in-out infinite alternate}` +
+          `@keyframes float{0%{transform:translate(0,0) scale(1,1)}40%{transform:translate(var(--dx),calc(var(--dy)*.4)) scale(.86,1.2)}75%{transform:translate(calc(var(--dx)*-1),calc(var(--dy)*.75)) scale(.93,1.1)}100%{transform:translate(0,var(--dy)) scale(1.06,.92)}}` +
+          `.glow{animation:breathe 11s ease-in-out infinite alternate}@keyframes breathe{from{opacity:.45}to{opacity:.85}}` +
+          `@media (prefers-reduced-motion:reduce){.b,.glow{animation:none}}`
       : '') +
     `</style>`
 
@@ -74,7 +118,7 @@ export const backdrop = (theme: Theme, kind: Kind, moving: boolean): string => {
     const dy = Math.round(H * travel)
     const size = goo ? r : Math.round(r * 1.45)
     const fill = goo ? `class="b c${c}"` : `class="b" fill="url(#g${c})"`
-    const anim = moving ? `;animation-duration:${dur}s;animation-delay:-${delay}s` : ''
+    const anim = !moving ? '' : goo ? beatTiming(dur, delay, speed) : `;animation-duration:${dur}s;animation-delay:-${delay}s`
     // a still lamp is caught mid-rise, not lined up along the edges
     const at = moving ? '' : ` transform="translate(${Math.round(drift * 0.6)} ${Math.round(dy * 0.45)})"`
     return `<ellipse ${fill}${at} style="--dx:${drift}px;--dy:${dy}px${anim}" cx="${Math.round(W * x)}" cy="${Math.round(H * y)}" rx="${size}" ry="${Math.round(size * 1.08)}"/>`

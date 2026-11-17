@@ -5,7 +5,7 @@
 // (so no path() and no CSS gradients), `@media (` with the space, nothing fetched.
 import type { Mode, Theme } from './themes.ts'
 
-export type Scenery = 'grid' | 'sunset' | 'city' | 'plotter' | 'weave' | 'glyphs' | 'flock' | 'nebula' | 'ridges' | 'circuit' | 'tunnel'
+export type Scenery = 'grid' | 'sunset' | 'city' | 'plotter' | 'weave' | 'flock' | 'nebula' | 'ridges' | 'circuit' | 'tunnel'
 
 const W = 1600
 const H = 1000
@@ -433,74 +433,9 @@ const weave = (theme: Theme, moving: boolean): string => {
   })
 }
 
-/** A field of small machines that orbit, sweep, step, draw and travel, in mechanical timing. */
-const glyphs = (theme: Theme, moving: boolean): string => {
-  const rand = seeded(73)
-  const at = (x: number, y: number) => `transform-origin:${x}px ${y}px`
-  const kinds: readonly ((x: number, y: number, a: number) => string)[] = [
-    // orbit
-    (x, y, a) =>
-      `<circle cx="${x}" cy="${y}" r="30" stroke-dasharray="2 6" opacity=".5"/><circle class="c${a}" cx="${x}" cy="${y}" r="5" stroke="none"/><g class="spin" style="${at(x, y)};animation-duration:${n1(9 + rand() * 8)}s"><circle class="t" cx="${x + 30}" cy="${y}" r="3.6" stroke="none"/><circle class="t" cx="${x - 30}" cy="${y}" r="2.2" stroke="none"/></g>`,
-    // sweep
-    (x, y, a) =>
-      `<circle cx="${x}" cy="${y}" r="32"/><circle cx="${x}" cy="${y}" r="15" opacity=".4"/><line class="spin k${a}" x1="${x}" y1="${y}" x2="${x}" y2="${y - 32}" style="${at(x, y)};animation-duration:8s;animation-timing-function:steps(16)"/><circle class="pulse c${a}" cx="${x + 14}" cy="${y - 11}" r="3" stroke="none"/>`,
-    // bars
-    (x, y, a) =>
-      [0, 1, 2, 3, 4].map(i => `<rect class="bar ${i === 2 ? `c${a}` : 't'}" x="${x - 29 + i * 12}" y="${y + 30 - (22 + ((i * 17) % 34))}" width="7" height="${22 + ((i * 17) % 34)}" stroke="none" style="animation-delay:-${n2(i * 0.37)}s"/>`).join('') +
-      `<line x1="${x - 34}" y1="${y + 34}" x2="${x + 34}" y2="${y + 34}" opacity=".5"/>`,
-    // ring that draws itself
-    (x, y, a) => `<circle class="draw" cx="${x}" cy="${y}" r="28" pathLength="1" style="animation-delay:-${n1(rand() * 7)}s"/><polygon class="c${a}" points="${x + 34},${y} ${x + 22},${y - 6} ${x + 22},${y + 6}" stroke="none"/>`,
-    // dot on a track
-    (x, y, a) => `<line x1="${x - 34}" y1="${y}" x2="${x + 34}" y2="${y}"/><path d="M${x - 34} ${y - 8}v16M${x + 34} ${y - 8}v16"/><circle class="slide c${a}" cx="${x}" cy="${y}" r="4.5" stroke="none" style="animation-duration:${n1(2.6 + rand() * 2)}s"/>`,
-    // crosshair
-    (x, y, a) => `<path d="M${x - 34} ${y}h22M${x + 12} ${y}h22M${x} ${y - 34}v22M${x} ${y + 12}v22"/><rect class="beat k${a}" x="${x - 7}" y="${y - 7}" width="14" height="14"/>`,
-    // signal
-    (x, y) => `<path class="draw" d="M${x - 36} ${y}q9 -24 18 0t18 0t18 0t18 0" pathLength="1" style="animation-delay:-${n1(rand() * 7)}s"/><line x1="${x - 36}" y1="${y + 26}" x2="${x + 36}" y2="${y + 26}" stroke-dasharray="1 5" opacity=".5"/>`,
-    // nested squares
-    (x, y, a) => `<rect x="${x - 30}" y="${y - 30}" width="60" height="60" opacity=".4"/><rect class="turn" x="${x - 19}" y="${y - 19}" width="38" height="38" style="${at(x, y)}"/><rect class="c${a}" x="${x - 6}" y="${y - 6}" width="12" height="12" stroke="none"/>`,
-    // linked nodes
-    (x, y, a) =>
-      `<path d="M${x} ${y - 26}L${x - 28} ${y + 22}L${x + 28} ${y + 22}Z" opacity=".55"/><circle class="ground" cx="${x - 28}" cy="${y + 22}" r="6"/><circle class="ground" cx="${x + 28}" cy="${y + 22}" r="6"/><circle class="pulse c${a}" cx="${x}" cy="${y - 26}" r="6" stroke="none"/>`,
-  ]
-  let body = ''
-  for (let r = 0; r < 7; r++) {
-    let last: number | null = null
-    for (let c = 0; c < 10; c++) {
-      if (rand() > 0.52) {
-        last = null
-        continue
-      }
-      const x = c * 160 + 80
-      const y = r * 150 + 70
-      const draw = kinds[Math.floor(rand() * kinds.length)]
-      if (last !== null) body += `<line class="bus" x1="${last + 46}" y1="${y}" x2="${x - 46}" y2="${y}"/>`
-      body += (draw ? draw(x, y, Math.floor(rand() * 3)) : '') + `<text class="t lb" x="${x}" y="${y + 60}">G-${String(r * 10 + c + 1).padStart(2, '0')}</text>`
-      last = x
-    }
-  }
-  return shell(theme, moving, {
-    dark: '--marks:.62',
-    light: '--marks:.7',
-    defs: `<pattern id="dots" width="40" height="40" patternUnits="userSpaceOnUse"><circle class="t" cx="20" cy="20" r="1.2"/></pattern>`,
-    css:
-      `.marks{fill:none;stroke:var(--text);stroke-width:1.6;stroke-linecap:round;opacity:var(--marks)}` +
-      `.bus{stroke-dasharray:1 7;opacity:.45}` +
-      `.lb{font:10px ui-monospace,Menlo,Monaco,monospace;letter-spacing:.1em;text-anchor:middle;stroke:none;opacity:.5}` +
-      `.spin{animation:spin 12s linear infinite}@keyframes spin{to{transform:rotate(360deg)}}` +
-      `.pulse{animation:pulse 2.8s ease-in-out infinite alternate}@keyframes pulse{from{opacity:.25}to{opacity:1}}` +
-      `.bar,.beat,.slide{transform-box:fill-box}` +
-      `.bar{transform-origin:50% 100%;animation:bar 1.9s steps(5) infinite alternate}@keyframes bar{from{transform:scaleY(.25)}to{transform:scaleY(1)}}` +
-      `.beat{transform-origin:50% 50%;animation:beat 2.4s ease-in-out infinite alternate}@keyframes beat{from{transform:scale(1)}to{transform:scale(1.6)}}` +
-      `.slide{animation:slide 3.4s linear infinite alternate}@keyframes slide{from{transform:translateX(-30px)}to{transform:translateX(30px)}}` +
-      `.draw{stroke-dasharray:1;animation:draw 7s linear infinite}@keyframes draw{0%{stroke-dashoffset:1}45%,55%{stroke-dashoffset:0}100%{stroke-dashoffset:-1}}` +
-      `.turn{animation:turn 8s linear infinite}@keyframes turn{0%,35%{transform:rotate(0deg)}50%,85%{transform:rotate(45deg)}100%{transform:rotate(90deg)}}`,
-    body: `<rect x="-400" y="-400" width="${W + 800}" height="${H + 800}" fill="url(#dots)" opacity=".16"/><g class="marks">${body}</g>`,
-  })
-}
-
 type Flock = Record<'at' | 'cx' | 'cy' | 'ax' | 'bx' | 'ay' | 'by' | 'cz' | 'p1' | 'p2' | 'p3' | 'p4' | 'ranks' | 'tail' | 'long' | 'fat', number>
 
-/** Murmuration: two flocks of square pixels that stream, bunch and turn as one, over a pixel treeline at dusk. */
+/** Murmuration: a flock of square pixels that streams, bunches and turns as one, over a pixel treeline at dusk. */
 const flock = (theme: Theme, moving: boolean): string => {
   const rand = seeded(91)
   const T = 40, STOPS = 96, GAP = 14
@@ -849,5 +784,5 @@ const tunnel = (theme: Theme, moving: boolean): string => {
 }
 
 /** Each scene by name: (theme, moving) to one SVG. */
-export const SCENERY: Readonly<Record<Scenery, (theme: Theme, moving: boolean) => string>> = { grid, sunset, city, plotter, weave, glyphs, flock, nebula, ridges, circuit, tunnel }
-export const SCENERIES: readonly Scenery[] = ['grid', 'sunset', 'city', 'plotter', 'weave', 'glyphs', 'flock', 'nebula', 'ridges', 'circuit', 'tunnel']
+export const SCENERY: Readonly<Record<Scenery, (theme: Theme, moving: boolean) => string>> = { grid, sunset, city, plotter, weave, flock, nebula, ridges, circuit, tunnel }
+export const SCENERIES: readonly Scenery[] = ['grid', 'sunset', 'city', 'plotter', 'weave', 'flock', 'nebula', 'ridges', 'circuit', 'tunnel']

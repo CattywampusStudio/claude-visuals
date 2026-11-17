@@ -18,7 +18,6 @@ const PICTURES: readonly (readonly [Kind, string])[] = [
   ['rain', 'green-rain'],
   ['plotter', 'ink'],
   ['weave', 'ember'],
-  ['glyphs', 'cipher'],
   ['flock', 'dusk'],
   ['nebula', 'synthwave'],
   ['ridges', 'static'],
