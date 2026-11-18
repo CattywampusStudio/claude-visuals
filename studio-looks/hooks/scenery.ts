@@ -1,11 +1,12 @@
 // Eleven drawn scenes. The first six: a synthwave grid, a retro sunset, a night city, and three mechanical ones
 // (a plotter, a loom, a field of small machines). The second five: a flock of pixels, a nebula, stacked signal
-// ridges, a circuit board and a tunnel. Each is one SVG that moves by CSS alone, kept to what the desktop app will animate:
+// ridges, a circuit board and a tunnel. Then the northern lights over a frozen lake, and three in square pixels or plain shapes:
+// a kaleidoscope, an aquarium and a dithered sky. Each is one SVG that moves by CSS alone, kept to what the desktop app will animate:
 // its listed SVG elements, CSS whose every function is a colour, maths, transform, easing or filter function
 // (so no path() and no CSS gradients), `@media (` with the space, nothing fetched.
 import type { Mode, Theme } from './themes.ts'
 
-export type Scenery = 'grid' | 'sunset' | 'city' | 'plotter' | 'weave' | 'flock' | 'nebula' | 'ridges' | 'circuit' | 'tunnel'
+export type Scenery = 'grid' | 'sunset' | 'city' | 'plotter' | 'weave' | 'flock' | 'nebula' | 'ridges' | 'circuit' | 'tunnel' | 'borealis' | 'kaleidoscope' | 'aquarium' | 'valley'
 
 const W = 1600
 const H = 1000
@@ -21,14 +22,14 @@ const n1 = (v: number) => +v.toFixed(1)
 const n2 = (v: number) => +v.toFixed(2)
 const vars = (m: Mode) => `--ground:${m.ground};--text:${m.text};${m.washes.map((c, i) => `--w${i}:${c}`).join(';')}`
 
-type Parts = { dark?: string; light?: string; defs?: string; css: string; body: string }
+type Parts = { tune?: string; defs?: string; css: string; body: string }
 
-// The frame every scene here shares: the theme's colours as variables that swap with the colour scheme, the ground,
+// The frame every scene here shares: the theme's colours as variables, each scene's own tuning of them, the ground,
 // and the switch that holds everything still. An element's inline style is where it rests; its animation moves it from there.
 const shell = (theme: Theme, moving: boolean, o: Parts): string =>
   `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ${W} ${H}" preserveAspectRatio="xMidYMid slice">` +
   `<defs>${o.defs ?? ''}</defs>` +
-  `<style>svg{${vars(theme.dark)};${o.dark ?? ''}}@media (prefers-color-scheme:light){svg{${vars(theme.light)};${o.light ?? ''}}}` +
+  `<style>svg{${vars(theme.colors)};${o.tune ?? ''}}` +
   `.ground{fill:var(--ground)}.sg{stop-color:var(--ground)}.t{fill:var(--text)}.kt{stroke:var(--text)}` +
   [0, 1, 2, 3].map(i => `.c${i}{fill:var(--w${i})}.s${i}{stop-color:var(--w${i})}.k${i}{stroke:var(--w${i})}`).join('') +
   o.css +
@@ -87,8 +88,7 @@ const grid = (theme: Theme, moving: boolean): string => {
   for (let k = -40; k <= 40; k++) away += `<line x1="${VP}" y1="${HZ}" x2="${VP + k * 300}" y2="${HZ + K}"/>`
 
   return shell(theme, moving, {
-    dark: '--stars:1',
-    light: '--stars:.4',
+    tune: '--stars:1',
     defs:
       `<linearGradient id="sky" x1="0" y1="0" x2="0" y2="1"><stop class="s2" offset=".2" stop-opacity="0"/><stop class="s2" offset="1" stop-opacity=".5"/></linearGradient>` +
       `<linearGradient id="sun" x1="0" y1="0" x2="0" y2="1"><stop class="s3" offset="0"/><stop class="s0" offset=".78"/></linearGradient>` +
@@ -184,8 +184,7 @@ const sunset = (theme: Theme, moving: boolean): string => {
   const bird = (x: number, y: number, s: number) => `<path d="M${x} ${y}q${9 * s} ${-9 * s} ${18 * s} 0q${9 * s} ${-9 * s} ${18 * s} 0"/>`
 
   return shell(theme, moving, {
-    dark: '--sil:color-mix(in srgb,var(--ground) 78%,#000);--sil2:color-mix(in srgb,var(--ground) 64%,var(--w3))',
-    light: '--sil:color-mix(in srgb,var(--text) 82%,var(--w3));--sil2:color-mix(in srgb,var(--text) 42%,var(--w3))',
+    tune: '--sil:color-mix(in srgb,var(--ground) 78%,#000);--sil2:color-mix(in srgb,var(--ground) 64%,var(--w3))',
     defs:
       `<linearGradient id="sky" x1="0" y1="0" x2="0" y2="1"><stop class="s3" offset=".4" stop-opacity="0"/><stop class="s3" offset=".74" stop-opacity=".38"/><stop class="s2" offset=".9" stop-opacity=".5"/><stop class="s1" offset="1" stop-opacity=".62"/></linearGradient>` +
       `<linearGradient id="sea" x1="0" y1="0" x2="0" y2="1"><stop class="s3" offset="0" stop-opacity=".34"/><stop class="s3" offset=".6" stop-opacity="0"/></linearGradient>` +
@@ -290,8 +289,7 @@ const city = (theme: Theme, moving: boolean): string => {
     `<g class="fly" style="transform:translateX(${Math.round(-100 + 1900 * p)}px);animation-duration:${secs}s;animation-delay:-${n1(p * secs)}s"><rect x="0" y="${y}" width="52" height="2.4" fill="url(#trail)"/><circle class="c0" cx="52" cy="${y + 1.2}" r="2.6"/></g>`
 
   return shell(theme, moving, {
-    dark: '--b1:color-mix(in srgb,var(--ground) 70%,var(--w3));--b2:color-mix(in srgb,var(--ground) 86%,var(--w3));--b3:color-mix(in srgb,var(--ground) 92%,#000);--lit:1',
-    light: '--b1:color-mix(in srgb,var(--ground) 80%,var(--w3));--b2:color-mix(in srgb,var(--ground) 56%,var(--w3));--b3:color-mix(in srgb,var(--text) 78%,var(--w3));--lit:.9',
+    tune: '--b1:color-mix(in srgb,var(--ground) 70%,var(--w3));--b2:color-mix(in srgb,var(--ground) 86%,var(--w3));--b3:color-mix(in srgb,var(--ground) 92%,#000);--lit:1',
     defs:
       `<linearGradient id="smog" x1="0" y1="0" x2="0" y2="1"><stop class="s3" offset="0" stop-opacity="0"/><stop class="s3" offset="1" stop-opacity=".45"/></linearGradient>` +
       `<radialGradient id="moon"><stop class="s1" offset="0" stop-opacity=".3"/><stop class="s1" offset="1" stop-opacity=".04"/></radialGradient>` +
@@ -418,8 +416,7 @@ const weave = (theme: Theme, moving: boolean): string => {
   const shuttle = (cls: string, rest: string) => `<g class="${cls}" style="${rest}"><rect class="c3" x="-400" y="-1.5" width="${W + 800}" height="3"/><rect class="head c3" x="0" y="-7" width="64" height="14" rx="2"/></g>`
   const over = (clip: string, id: string) => `<g clip-path="url(#${clip})"><rect class="ground" x="-400" y="-400" width="${W + 800}" height="${H + 800}"/><use href="#${id}"/></g>`
   return shell(theme, moving, {
-    dark: '--cloth:.85',
-    light: '--cloth:.75',
+    tune: '--cloth:.85',
     defs: tile('base', 't', 0.5, 0.16) + tile('ta', 'c0', 1, 0.6) + tile('tb', 'c1', 1, 0.6) + cloth('first', 'ta', 0) + cloth('second', 'tb', 200) + pick('p2', 'pk2', 0.6) + pick('p1', 'pk1', 0),
     css:
       `.cloth{opacity:var(--cloth)}` +
@@ -518,8 +515,7 @@ const flock = (theme: Theme, moving: boolean): string => {
   return shell(theme, moving, {
     // On a pale sky a dark bird swings the brightness of its spot far more than a bright bird does on a dark one,
     // so the flock is drawn faint there: any stronger and the app reads it as flicker and holds the scene still.
-    dark: '--bird:.95;--dusk:.5',
-    light: '--bird:.25;--dusk:.32',
+    tune: '--bird:.95;--dusk:.5',
     defs:
       `<linearGradient id="dusk" x1="0" y1="0" x2="0" y2="1"><stop class="s2" offset="0" stop-opacity="0"/><stop class="s2" offset=".7" stop-opacity=".55"/><stop class="s3" offset="1" stop-opacity=".8"/></linearGradient>` +
       `<radialGradient id="low"><stop class="s3" offset="0" stop-opacity=".7"/><stop class="s3" offset=".4" stop-opacity=".25"/><stop class="s3" offset="1" stop-opacity="0"/></radialGradient>`,
@@ -584,8 +580,7 @@ const nebula = (theme: Theme, moving: boolean): string => {
   }
   const cores = [band(-0.7, 0), band(0.72, 0)]
   return shell(theme, moving, {
-    dark: '--neb:1;--star:1;--hot:var(--text)',
-    light: '--neb:.62;--star:.55;--hot:var(--w3)',
+    tune: '--neb:1;--star:1;--hot:var(--text)',
     defs:
       [0, 1, 2, 3].map(i => `<radialGradient id="n${i}"><stop class="s${i}" offset="0" stop-opacity=".56"/><stop class="s${i}" offset=".45" stop-opacity=".24"/><stop class="s${i}" offset="1" stop-opacity="0"/></radialGradient>`).join('') +
       `<radialGradient id="dk"><stop class="sg" offset="0" stop-opacity=".85"/><stop class="sg" offset=".6" stop-opacity=".4"/><stop class="sg" offset="1" stop-opacity="0"/></radialGradient>` +
@@ -643,8 +638,7 @@ const ridges = (theme: Theme, moving: boolean): string => {
   let ticks = ''
   for (let x = 100; x < W; x += 100) ticks += `<path d="M${x} 956v${x % 500 === 0 ? 16 : 8}"/>`
   return shell(theme, moving, {
-    dark: '--ink:.95',
-    light: '--ink:.8',
+    tune: '--ink:.95',
     defs: `<radialGradient id="rise"><stop class="s2" offset="0" stop-opacity=".38"/><stop class="s2" offset="1" stop-opacity="0"/></radialGradient>`,
     css:
       `.rows{opacity:var(--ink);fill:none;stroke-width:1.8;stroke-linejoin:round;stroke-linecap:round}` +
@@ -712,8 +706,7 @@ const circuit = (theme: Theme, moving: boolean): string => {
   })
   for (let i = 0; i < 16; i++) ends += `<circle cx="${Math.round(60 + rand() * 1480)}" cy="${([48, 952, 320, 660][i % 4] ?? 48) + Math.round((rand() - 0.5) * 30)}" r="6"/>`
   return shell(theme, moving, {
-    dark: '--trace:.6;--board:.16',
-    light: '--trace:.7;--board:.2',
+    tune: '--trace:.6;--board:.16',
     defs:
       `<pattern id="holes" width="40" height="40" patternUnits="userSpaceOnUse"><circle class="t" cx="20" cy="20" r="1.4"/></pattern>` +
       `<radialGradient id="die"><stop class="s0" offset="0" stop-opacity=".8"/><stop class="s0" offset="1" stop-opacity="0"/></radialGradient>`,
@@ -763,9 +756,9 @@ const tunnel = (theme: Theme, moving: boolean): string => {
   return shell(theme, moving, {
     // On a pale ground each frame or streak going by darkens its spot enough for the app to count it, and more than
     // three counts a second in one spot is flicker to it, which holds the scene still. So there the frames come
-    // slower, every other one is left out, and the streaks are faint.
-    dark: '--line:.9;--rail:.34;--hot:var(--text);--slow:1;--odd:1;--streak:1',
-    light: '--line:.75;--rail:.4;--hot:var(--w3);--slow:1.6;--odd:0;--streak:.3',
+    // slower, every other one is left out, and the streaks are faint. On a dark ground the app's closer look at single
+    // spots counts the frames too (held 4 runs in 10 in Aurora), so there every other frame is faint and they come a little slower.
+    tune: '--line:.9;--rail:.34;--hot:var(--text);--slow:1.2;--odd:.3;--streak:1',
     defs:
       `<radialGradient id="end"><stop offset="0" stop-color="var(--hot)" stop-opacity=".9"/><stop class="s0" offset=".25" stop-opacity=".6"/><stop class="s2" offset=".6" stop-opacity=".22"/><stop class="s2" offset="1" stop-opacity="0"/></radialGradient>` +
       `<radialGradient id="shade"><stop class="sg" offset=".55" stop-opacity="0"/><stop class="sg" offset="1" stop-opacity=".7"/></radialGradient>`,
@@ -783,6 +776,616 @@ const tunnel = (theme: Theme, moving: boolean): string => {
   })
 }
 
+/** Northern lights: curtains of aurora over a frozen lake, snow-capped ranges at either side, spruce, a lit cabin. */
+const borealis = (theme: Theme, moving: boolean): string => {
+  const rand = seeded(181)
+  const SHORE = 690
+  // the ranges rise at either side of the window, where the conversation leaves the view clear
+  const side = (x: number) => Math.max(Math.exp(-(((x - 230) / 340) ** 2)), Math.exp(-(((x - 1370) / 340) ** 2)))
+  const lerp = (a: readonly number[], b: readonly number[], t: number): [number, number] => [n1((a[0] ?? 0) + ((b[0] ?? 0) - (a[0] ?? 0)) * t), n1((a[1] ?? 0) + ((b[1] ?? 0) - (a[1] ?? 0)) * t)]
+
+  let stars = ''
+  for (let i = 0; i < 90; i++) {
+    const y = rand() * (SHORE - 140), tw = i % 6 === 0
+    stars += `<circle${tw ? ' class="tw"' : ''} cx="${Math.round(rand() * (W + 200) - 100)}" cy="${Math.round(y - 60)}" r="${n1(0.6 + rand() * 1.3)}" style="opacity:${n2((0.3 + rand() * 0.6) * (1 - (y / SHORE) * 0.6))}${tw ? `;animation-duration:${n1(4 + rand() * 5)}s;animation-delay:-${n1(rand() * 8)}s` : ''}"/>`
+  }
+
+  // a curtain: thin rays standing on a wavering lower edge, in bands that brighten one after another along it
+  const BANDS = 12
+  const curtain = (k: number, grad: string, base: number, amp: number, ph: number, tall: number, step: number, secs: number) => {
+    const bands = Array.from({ length: BANDS }, () => '')
+    let edge = ''
+    for (let x = -200; x <= W + 200; x += step) {
+      const b = base + amp * Math.sin(x / 300 + ph) + amp * 0.35 * Math.sin(x / 97 + ph * 1.7)
+      const env = 0.4 + 0.6 * side(x)
+      const h = tall * env * (0.7 + 0.3 * Math.sin(x / 140 + ph * 2.3)) * (0.85 + rand() * 0.3)
+      const at = Math.min(BANDS - 1, Math.floor(((x + 200) / (W + 400)) * BANDS))
+      bands[at] += `<rect x="${Math.round(x)}" y="${Math.round(b - h)}" width="${Math.round(step * (0.5 + rand() * 0.9))}" height="${Math.round(h + 8)}" opacity="${n2(0.3 + 0.7 * rand() * env)}"/>`
+    }
+    for (let x = -200; x <= W + 200; x += 30) edge += `${edge ? ' ' : ''}${x},${Math.round(base + amp * Math.sin(x / 300 + ph) + amp * 0.35 * Math.sin(x / 97 + ph * 1.7))}`
+    return `<g class="sw sw${k}"><polyline class="edge k${grad === 'rb' ? 1 : 0}" points="${edge}" stroke-width="64" opacity=".07"/><polyline class="edge k${grad === 'rb' ? 1 : 0}" points="${edge}" stroke-width="22" opacity=".1"/>` + bands.map((rays, i) => `<g class="br" fill="url(#${grad})" style="animation-duration:${secs}s;animation-delay:-${n2((i / BANDS) * secs * 1.6)}s">${rays}</g>`).join('') + `</g>`
+  }
+
+  // a range of peaks and saddles, tallest at the sides, with snow on every high peak
+  const range = (base: number, low: number, high: number, min: number, max: number) => {
+    const pts: [number, number][] = []
+    let up = true
+    for (let x = -220; x <= W + 220; x += min + rand() * (max - min)) {
+      const e = low + (high - low) * side(x)
+      pts.push([Math.round(x), Math.round(base - (up ? e * (0.75 + rand() * 0.25) : e * (0.38 + rand() * 0.3)))])
+      up = !up
+    }
+    let caps = ''
+    for (let i = 1; i < pts.length - 1; i += 2) {
+      const P = pts[i], L = pts[i - 1], R = pts[i + 1]
+      if (!P || !L || !R) continue
+      if (base - P[1] < 70) continue
+      const A = lerp(P, L, 0.26 + rand() * 0.1), B = lerp(P, R, 0.3 + rand() * 0.12)
+      const dip = (t: number) => { const q = lerp(A, B, t); return `${q[0]},${n1(q[1] + (rand() - 0.3) * 18)}` }
+      caps += `<polygon points="${P.join(',')} ${A.join(',')} ${dip(0.3)} ${dip(0.55)} ${dip(0.78)} ${B.join(',')}"/>`
+    }
+    const outline = `-220,${base + 4} ${pts.map(p => p.join(',')).join(' ')} ${W + 220},${base + 4}`
+    const at = (x: number) => { for (let i = 1; i < pts.length; i++) { const p = pts[i - 1], q = pts[i]; if (p && q && q[0] >= x) return p[1] + ((q[1] - p[1]) * (x - p[0])) / (q[0] - p[0]) } return base }
+    return { outline, caps, at }
+  }
+  const far = range(SHORE + 2, 60, 300, 50, 110)
+  const near = range(SHORE + 14, 6, 150, 46, 96)
+
+  // spruce: one path of stacked tiers
+  const spruce = (x: number, yb: number, h: number) => {
+    const w = h * 0.34, p = (dx: number, dy: number) => `${Math.round(x + dx * w)} ${Math.round(yb - dy * h)}`
+    return `M${p(0, 1)}L${p(0.38, 0.62)}L${p(0.2, 0.62)}L${p(0.7, 0.28)}L${p(0.42, 0.28)}L${p(1, 0)}L${p(-1, 0)}L${p(-0.42, 0.28)}L${p(-0.7, 0.28)}L${p(-0.2, 0.62)}L${p(-0.38, 0.62)}Z`
+  }
+  let trees = ''
+  for (let x = -80; x < W + 80; x += 10 + rand() * 18) {
+    const s = side(x)
+    if (s < 0.08 && rand() < 0.6) continue
+    trees += spruce(x, Math.min(SHORE + 16, near.at(x) + 10 + rand() * 26 * s), (8 + rand() * 12) * (0.4 + 1.4 * s) + 4)
+  }
+  let fore = ''
+  for (const [x, h] of [[-30, 420], [40, 330], [100, 250], [1500, 300], [1560, 400], [1640, 350]] as const) fore += spruce(x, H + 30, h + rand() * 40)
+
+  let ice = ''
+  for (let i = 0; i < 26; i++) {
+    const d = rand(), y = SHORE + 14 + d * d * (H - SHORE)
+    ice += `<ellipse cx="${Math.round(rand() * W)}" cy="${Math.round(y)}" rx="${Math.round((50 + rand() * 120) * (1 + d * 2))}" ry="${n1((1.2 + rand() * 2) * (1 + d * 1.5))}" opacity="${n2(0.05 + rand() * 0.16)}"/>`
+  }
+  let cracks = ''
+  for (let i = 0; i < 9; i++) {
+    let x = rand() * W, y = SHORE + 40 + rand() * (H - SHORE - 40), d = `M${Math.round(x)} ${Math.round(y)}`
+    for (let k = 0; k < 6; k++) { x += (rand() - 0.5) * 120; y += (rand() - 0.5) * 16; d += `L${Math.round(x)} ${Math.round(y)}` }
+    cracks += `<path d="${d}"/>`
+  }
+  let glints = ''
+  for (let i = 0; i < 14; i++) glints += `<circle class="tw" cx="${Math.round(rand() * W)}" cy="${Math.round(SHORE + 20 + rand() * (H - SHORE - 20))}" r="${n1(0.8 + rand() * 1.2)}" style="animation-duration:${n1(5 + rand() * 5)}s;animation-delay:-${n1(rand() * 9)}s"/>`
+
+  // a cabin on the left shore, its window lit, smoke rising
+  const cx = 330, cy = SHORE + 18
+  const cabin =
+    `<circle cx="${cx - 7}" cy="${cy - 14}" r="80" fill="url(#lamp)"/>` +
+    `<g class="sil"><rect x="${cx - 28}" y="${cy - 24}" width="56" height="24"/><rect x="${cx + 14}" y="${cy - 50}" width="7" height="16"/><polygon points="${cx - 36},${cy - 23} ${cx},${cy - 46} ${cx + 36},${cy - 23}"/></g>` +
+    `<polygon class="snow" points="${cx - 38},${cy - 22} ${cx},${cy - 48} ${cx + 38},${cy - 22} ${cx + 31},${cy - 26} ${cx},${cy - 43} ${cx - 31},${cy - 26}"/>` +
+    `<rect class="c3" x="${cx - 14}" y="${cy - 18}" width="12" height="10"/>` +
+    [0, 1, 2, 3].map(i => `<circle class="smk" cx="${cx + 17}" cy="${cy - 54}" r="7" style="animation-delay:-${i * 3}s"/>`).join('')
+
+  const aurora =
+    `<g id="au">` +
+    `<ellipse cx="260" cy="${SHORE - 260}" rx="520" ry="260" fill="url(#halo)"/><ellipse class="hl" cx="1340" cy="${SHORE - 280}" rx="520" ry="260" fill="url(#halo)"/>` +
+    `<g opacity=".45">${curtain(2, 'ra', 470, 40, 4, 150, 24, 9)}</g>` +
+    `<g opacity=".7">${curtain(1, 'rb', 300, 55, 2.1, 230, 20, 11)}</g>` +
+    curtain(0, 'ra', 400, 70, 0.3, 300, 14, 7) +
+    `</g>`
+
+  return shell(theme, moving, {
+    tune: '--star:1;--far:color-mix(in srgb,var(--ground) 66%,color-mix(in srgb,var(--text) 45%,var(--w1)));--near:color-mix(in srgb,var(--ground) 86%,var(--w1));--sil:color-mix(in srgb,var(--ground) 55%,#000);--snow:color-mix(in srgb,#fff 85%,var(--w0));--ice:color-mix(in srgb,var(--ground) 84%,var(--w1))',
+    defs:
+      `<linearGradient id="sky" x1="0" y1="0" x2="0" y2="1"><stop class="sg" offset="0"/><stop class="s1" offset=".55" stop-opacity=".05"/><stop class="s0" offset="1" stop-opacity=".07"/></linearGradient>` +
+      `<linearGradient id="ra" x1="0" y1="1" x2="0" y2="0"><stop class="s0" offset="0" stop-opacity="0"/><stop class="s0" offset=".05" stop-opacity=".95"/><stop class="s0" offset=".3" stop-opacity=".4"/><stop class="s2" offset=".7" stop-opacity=".12"/><stop class="s2" offset="1" stop-opacity="0"/></linearGradient>` +
+      `<linearGradient id="rb" x1="0" y1="1" x2="0" y2="0"><stop class="s1" offset="0" stop-opacity="0"/><stop class="s1" offset=".06" stop-opacity=".8"/><stop class="s1" offset=".35" stop-opacity=".3"/><stop class="s2" offset=".75" stop-opacity=".12"/><stop class="s2" offset="1" stop-opacity="0"/></linearGradient>` +
+      `<radialGradient id="halo"><stop class="s0" offset="0" stop-opacity=".12"/><stop class="s0" offset="1" stop-opacity="0"/></radialGradient>` +
+      `<linearGradient id="rim" x1="0" y1="0" x2="0" y2="1"><stop class="s0" offset="0" stop-opacity=".22"/><stop class="s0" offset=".6" stop-opacity="0"/></linearGradient>` +
+      `<linearGradient id="sheen" x1="0" y1="0" x2="0" y2="1"><stop class="s0" offset="0" stop-opacity=".16"/><stop class="s0" offset=".5" stop-opacity="0"/></linearGradient>` +
+      `<radialGradient id="lamp"><stop class="s3" offset="0" stop-opacity=".4"/><stop class="s3" offset="1" stop-opacity="0"/></radialGradient>` +
+      `<clipPath id="lake"><rect x="-400" y="${SHORE}" width="${W + 800}" height="${H - SHORE + 400}"/></clipPath>` +
+      `<linearGradient id="trail" x1="0" y1="0" x2="1" y2="0"><stop offset="0" stop-color="var(--text)"/><stop offset="1" stop-color="var(--text)" stop-opacity="0"/></linearGradient>`,
+    css:
+      `.sky{opacity:var(--star)}.tw{animation:glint 6s ease-in-out infinite alternate}@keyframes glint{from{opacity:.08}to{opacity:.9}}` +
+      `.br{animation:wave 7s ease-in-out infinite alternate}@keyframes wave{from{opacity:.42}to{opacity:1}}` +
+      `.sw{transform-origin:800px 420px}.edge{fill:none;stroke-linejoin:round}` +
+      `.sw0{animation:sway0 30s ease-in-out infinite alternate}@keyframes sway0{from{transform:translateX(-46px) skewX(-6deg) scaleY(.94)}to{transform:translateX(46px) skewX(5deg) scaleY(1.05)}}` +
+      `.sw1{animation:sway1 38s ease-in-out infinite alternate}@keyframes sway1{from{transform:translateX(40px) skewX(5deg) scaleY(1.04)}to{transform:translateX(-40px) skewX(-4deg) scaleY(.95)}}` +
+      `.sw2{animation:sway2 46s ease-in-out infinite alternate}@keyframes sway2{from{transform:translateX(-30px) skewX(-3deg)}to{transform:translateX(30px) skewX(4deg)}}` +
+      `.hl{animation:wave 13s ease-in-out infinite alternate}` +
+      `.far{fill:var(--far)}.near{fill:var(--near)}.sil{fill:var(--sil)}.snow{fill:var(--snow)}.cap{fill:var(--snow);opacity:.8}` +
+      `.ice{fill:var(--ice)}.drift{fill:var(--snow)}.crack{fill:none;stroke:var(--text);stroke-width:1;opacity:.1}.gl{fill:var(--snow)}` +
+      `.smk{fill:var(--text);opacity:0;transform-box:fill-box;transform-origin:50% 50%;animation:smoke 12s linear infinite}@keyframes smoke{0%{transform:translate(0,0) scale(.4);opacity:0}15%{opacity:.28}100%{transform:translate(30px,-96px) scale(1.8);opacity:0}}` +
+      `.shoot{animation:shoot 31s linear infinite}@keyframes shoot{0%{transform:translate(1300px,-30px);opacity:0}1%{opacity:.9}4%{transform:translate(900px,170px);opacity:0}100%{transform:translate(900px,170px);opacity:0}}`,
+    body:
+      `<rect x="-400" y="-400" width="${W + 800}" height="${SHORE + 400}" fill="url(#sky)"/>` +
+      `<g class="sky t">${stars}</g>` +
+      `<g class="shoot" style="transform:translate(900px,170px);opacity:0"><line x1="130" y1="-65" x2="0" y2="0" stroke="url(#trail)" stroke-width="2" stroke-linecap="round"/></g>` +
+      aurora +
+      `<g id="mt"><polygon class="far" points="${far.outline}"/><polygon points="${far.outline}" fill="url(#rim)"/><g class="cap">${far.caps}</g></g>` +
+      `<rect class="ice" x="-400" y="${SHORE}" width="${W + 800}" height="${H - SHORE + 400}"/>` +
+      `<g clip-path="url(#lake)"><use href="#au" transform="translate(0 ${SHORE * 1.5}) scale(1 -0.5)" opacity=".35"/><use href="#mt" transform="translate(0 ${SHORE * 1.5}) scale(1 -0.5)" opacity=".3"/></g>` +
+      `<rect x="-400" y="${SHORE}" width="${W + 800}" height="${H - SHORE}" fill="url(#sheen)"/>` +
+      `<g class="drift">${ice}</g><g class="crack">${cracks}</g><g class="gl">${glints}</g>` +
+      `<rect class="snow" x="-400" y="${SHORE}" width="${W + 800}" height="2" opacity=".35"/>` +
+      `<polygon class="near" points="${near.outline}"/><g class="cap">${near.caps}</g>` +
+      `<path class="sil" d="${trees}"/>` +
+      `<ellipse cx="${cx}" cy="${cy + 26}" rx="90" ry="10" class="c3" opacity=".12"/>` +
+      cabin +
+      `<path class="sil" d="${fore}"/>`,
+  })
+}
+
 /** Each scene by name: (theme, moving) to one SVG. */
-export const SCENERY: Readonly<Record<Scenery, (theme: Theme, moving: boolean) => string>> = { grid, sunset, city, plotter, weave, flock, nebula, ridges, circuit, tunnel }
-export const SCENERIES: readonly Scenery[] = ['grid', 'sunset', 'city', 'plotter', 'weave', 'flock', 'nebula', 'ridges', 'circuit', 'tunnel']
+// a picture in square pixels: rows of characters, one pixel each, as one path for every pixel that is `ch`
+const pixelPath = (rows: readonly string[], ch: string, P: number, x0 = 0, y0 = 0): string => {
+  let d = ''
+  rows.forEach((row, y) => {
+    for (let x = 0; x < row.length; x++) {
+      if (row[x] !== ch) continue
+      let n = 1
+      while (row[x + n] === ch) n++
+      d += `M${x0 + x * P} ${y0 + y * P}h${n * P}v${P}h${-n * P}z`
+      x += n - 1
+    }
+  })
+  return d
+}
+// a disc of square pixels, radius r pixels, centred on (cx, cy)
+const pixelDisc = (cx: number, cy: number, r: number, P: number): string => {
+  let d = ''
+  for (let j = -r; j < r; j++) {
+    const half = Math.round(Math.sqrt(Math.max(0, r * r - (j + 0.5) ** 2)))
+    if (half > 0) d += `M${cx - half * P} ${cy + j * P}h${2 * half * P}v${P}h${-2 * half * P}z`
+  }
+  return d
+}
+// ordered dither in 2x2 pixel tiles: a quarter, half or three quarters of the pixels in a colour class
+const ditherTiles = (id: string, cls: string, P: number): string =>
+  `<pattern id="${id}25" width="${2 * P}" height="${2 * P}" patternUnits="userSpaceOnUse"><rect class="${cls}" width="${P}" height="${P}"/></pattern>` +
+  `<pattern id="${id}50" width="${2 * P}" height="${2 * P}" patternUnits="userSpaceOnUse"><path class="${cls}" d="M0 0h${P}v${P}h-${P}zM${P} ${P}h${P}v${P}h-${P}z"/></pattern>` +
+  `<pattern id="${id}75" width="${2 * P}" height="${2 * P}" patternUnits="userSpaceOnUse"><path class="${cls}" d="M0 0h${2 * P}v${P}h-${2 * P}zM${P} ${P}h${P}v${P}h-${P}z"/></pattern>`
+
+/** Kaleidoscope: flat shapes drift slowly through one wedge of a mirror tube, seen twelve times over as a mandala that turns and breathes. */
+const kaleidoscope = (theme: Theme, moving: boolean): string => {
+  const rand = seeded(233)
+  const R = 1150, A = Math.PI / 6
+  const shape = (kind: number, s: number) =>
+    kind === 0 ? `M0 ${-s}L${n1(s * 0.87)} ${n1(s / 2)}L${n1(-s * 0.87)} ${n1(s / 2)}Z`
+    : kind === 1 ? `M0 ${-s}L${n1(s * 0.55)} 0L0 ${s}L${n1(-s * 0.55)} 0Z`
+    : kind === 2 ? `M${-s} ${n1(-s * 0.16)}h${2 * s}v${n1(s * 0.32)}h${-2 * s}Z`
+    : kind === 3 ? `M${-s} 0a${s} ${s} 0 1 0 ${2 * s} 0a${s} ${s} 0 1 0 ${-2 * s} 0Z`
+    : `M${n1(-s * 0.7)} ${n1(-s * 0.7)}h${n1(s * 1.4)}v${n1(s * 1.4)}h${n1(-s * 1.4)}Z`
+  // shapes spread from the middle to beyond the corners, many lying across the wedge's mirrored edges so they
+  // meet their own reflections as they drift
+  let shapes = ''
+  const N = 36
+  for (let i = 0; i < N; i++) {
+    const r = 50 + 920 * Math.sqrt((i + rand() * 0.8) / N), th = -0.12 + rand() * (A + 0.24)
+    const s = Math.round(10 + r * 0.05 + rand() * 30), kind = Math.floor(rand() * 5)
+    const ring = rand() < 0.22
+    shapes += `<path class="${ring ? `ring k${i % 4}` : `c${i % 4}`} m${i % 6}" d="${shape(kind, s)}" style="translate:${Math.round(r * Math.cos(th))}px ${Math.round(r * Math.sin(th))}px;opacity:${n2(ring ? 0.4 + rand() * 0.3 : 0.16 + rand() * 0.32)};animation-duration:${Math.round(36 + rand() * 50)}s;animation-delay:-${Math.round(rand() * 80)}s"/>`
+  }
+  let mirrors = ''
+  for (let k = 0; k < 6; k++) mirrors += `<use href="#kw" transform="rotate(${60 * k})"/><use href="#kw" transform="rotate(${60 * k + 60}) scale(1 -1)"/>`
+  const MOVES = [
+    'translate(150px,50px) rotate(120deg) scale(1.3)',
+    'translate(-100px,120px) rotate(-90deg) scale(.7)',
+    'translate(70px,-130px) rotate(180deg)',
+    'translate(-170px,-40px) rotate(60deg) scale(1.4)',
+    'translate(40px,160px) rotate(-150deg) scale(.8)',
+    'translate(130px,-90px) rotate(-60deg) scale(1.2)',
+  ]
+  return shell(theme, moving, {
+    tune: '--glow:.22',
+    defs:
+      `<clipPath id="wedge"><polygon points="0,0 ${R},0 ${n1(R * Math.cos(A))},${n1(R * Math.sin(A))}"/></clipPath>` +
+      `<g id="kw" clip-path="url(#wedge)">${shapes}</g>` +
+      `<radialGradient id="kglow"><stop class="s2" offset="0" stop-opacity="1"/><stop class="s2" offset="1" stop-opacity="0"/></radialGradient>` +
+      `<radialGradient id="tube"><stop class="sg" offset=".55" stop-opacity="0"/><stop class="sg" offset="1" stop-opacity=".7"/></radialGradient>`,
+    css:
+      `.ring{fill:none;stroke-width:3}` +
+      `.kal path{animation-timing-function:ease-in-out;animation-iteration-count:infinite;animation-direction:alternate}` +
+      MOVES.map((m, i) => `.m${i}{animation-name:m${i}}@keyframes m${i}{to{transform:${m}}}`).join('') +
+      `.turn{animation:turn 300s linear infinite}@keyframes turn{0%{transform:rotate(0) scale(1)}50%{transform:rotate(180deg) scale(1.12)}100%{transform:rotate(360deg) scale(1)}}` +
+      `.lens{fill:none;opacity:.14;stroke-width:2}`,
+    body:
+      `<circle cx="800" cy="500" r="560" fill="url(#kglow)" style="opacity:var(--glow)"/>` +
+      `<g transform="translate(800 500)"><g class="turn kal">${mirrors}` +
+      `<circle class="lens k1" r="230"/><circle class="lens k3" r="520" stroke-dasharray="4 14"/><circle class="lens k0" r="840"/></g></g>` +
+      `<circle cx="800" cy="500" r="1000" fill="url(#tube)"/>`,
+  })
+}
+
+/** Pixel aquarium: a vivid reef in small square pixels. Striped fish swim both ways through banded, dithered water, jellyfish
+ * drift up glowing, coral, sea fans, anemones and kelp crowd the sides, light falls in from the surface onto rippled sand. */
+const aquarium = (theme: Theme, moving: boolean): string => {
+  const rand = seeded(311)
+  const P = 4, FLOOR = 870, TOP = 36
+  const snap = (v: number) => Math.round(v / P) * P
+  const run = (x: number, y: number, w: number, h = P) => `M${x} ${y}h${w}v${h}h${-w}z`
+  const side = (x: number) => Math.max(Math.exp(-(((x - 170) / 330) ** 2)), Math.exp(-(((x - 1430) / 330) ** 2)))
+
+  // the water: bands from a bright surface to a deep floor, each dithered into the next in three steps
+  const WATER = [
+    'color-mix(in srgb,var(--ground) 40%,var(--w1))',
+    'color-mix(in srgb,var(--ground) 52%,var(--w1))',
+    'color-mix(in srgb,var(--ground) 62%,color-mix(in srgb,var(--w1) 70%,var(--w2)))',
+    'color-mix(in srgb,var(--ground) 70%,color-mix(in srgb,var(--w1) 45%,var(--w2)))',
+    'color-mix(in srgb,var(--ground) 77%,color-mix(in srgb,var(--w1) 25%,var(--w2)))',
+    'color-mix(in srgb,var(--ground) 83%,var(--w2))',
+    'color-mix(in srgb,var(--ground) 88%,var(--w2))',
+  ]
+  const band = (FLOOR - TOP) / WATER.length
+  let water = '', tiles = ''
+  WATER.forEach((_, i) => {
+    const y = i === 0 ? -400 : Math.round(TOP + i * band)
+    water += `<rect class="b${i}" x="-400" y="${y}" width="${W + 800}" height="${(i === 0 ? 400 + TOP + Math.ceil(band) : Math.ceil(band)) + 1}"/>`
+    if (i > 0) water += [75, 50, 25].map((p, k) => `<rect x="-400" y="${y + k * 3 * P}" width="${W + 800}" height="${3 * P}" fill="url(#t${i - 1}${p})"/>`).join('')
+    tiles += ditherTiles(`t${i}`, `b${i}`, P)
+  })
+  for (const t of ['ray', 'sd', 'c0', 'c1', 'c2', 'c3', 'lt']) tiles += ditherTiles(t, t, P)
+  tiles += `<pattern id="scale" width="${8 * P}" height="${6 * P}" patternUnits="userSpaceOnUse"><path d="M0 ${2 * P}h${P}v-${P}h${P}v-${P}h${2 * P}v${P}h${P}v${P}h${P}v${P}h-${6 * P}zM${4 * P} ${5 * P}h${P}v-${P}h${P}v-${P}h${2 * P}v${P}h${P}v${P}h${-5 * P}z" fill="#fff"/></pattern>`
+
+  // the surface: a bright line of little crests
+  let surf = ''
+  for (let x = -80; x < W + 80; x += 6 * P) surf += run(x, TOP - P, 3 * P) + run(x + 3 * P, TOP, 3 * P)
+
+  // light from the surface: stepped beams, dithered at their edges, slowly brightening and fading
+  let rays = ''
+  for (const [x, w, slant] of [[150, 90, 0.3], [330, 50, 0.28], [520, 30, 0.33], [1060, 40, 0.3], [1250, 80, 0.35], [1450, 110, 0.31]] as const) {
+    let core = '', edge = ''
+    for (let y = TOP; y < FLOOR - 60; y += 6 * P) { const x0 = snap(x + (y - TOP) * slant); core += run(x0, y, w, 6 * P); edge += run(x0 - 3 * P, y, 3 * P, 6 * P) + run(x0 + w, y, 3 * P, 6 * P) }
+    rays += `<g style="animation-delay:-${Math.round(rand() * 20)}s"><path class="ray" d="${core}"/><path fill="url(#ray50)" d="${edge}"/></g>`
+  }
+
+  // sand with dithered ripple bands that follow its top, pools of light on it, shells and starfish
+  let sand = `M-400 ${H + 40}V${FLOOR}`, edge = '', h = 0
+  for (let x = -400; x < W + 400; x += 6 * P) { h = Math.max(-3, Math.min(5, h + Math.round((rand() - 0.5) * 2.4))); sand += `V${FLOOR - h * P}h${6 * P}`; edge += run(x, FLOOR - h * P, 6 * P) }
+  sand += `V${H + 40}Z`
+  let pools = ''
+  for (let i = 0; i < 16; i++) {
+    const x = snap(rand() * W), y = snap(FLOOR + 16 + rand() * 90), w = snap(30 + rand() * 70)
+    pools += `<path d="${run(x, y, w)}${run(x + 2 * P, y - P, w - 4 * P)}${run(x + 2 * P, y + P, w - 4 * P)}" style="animation-delay:-${n1(rand() * 12)}s"/>`
+  }
+  const STAR = ['...#...', '...#...', '#######', '.#####.', '..###..', '.##.##.', '##...##']
+  const SHELL = ['..###..', '.#####.', '#.#.#.#', '#.#.#.#', '.#####.', '...#...']
+  let shells = ''
+  for (const [x, star, c] of [[420, 1, 3], [560, 0, 0], [980, 1, 2], [1120, 0, 1], [720, 0, 3], [860, 1, 0]] as const) shells += `<path class="c${c}" d="${pixelPath(star ? STAR : SHELL, '#', P, x, FLOOR + 30 + snap(rand() * 60))}"/>`
+
+  // coral: branching stems that fork as they climb, tipped in a bright colour
+  const coral = (x: number, base: number, tall: number, c: number) => {
+    let stems = '', tips = ''
+    // each straight stretch of a stem is one block, from where it last stepped sideways
+    const grow = (gx: number, gy: number, left: number, dir: number): void => {
+      let cx = gx, cy = gy, from = gy
+      for (let k = 0; k < left; k++) {
+        cy -= P
+        if (rand() < 0.35) { stems += run(cx, cy + P, 2 * P, from - cy - P); from = cy + P; cx += dir * P }
+        if (k > 3 && rand() < 0.12 && left - k > 4) grow(cx, cy, Math.round((left - k) * 0.8), -dir)
+      }
+      stems += run(cx, cy, 2 * P, from - cy)
+      tips += run(cx - P, cy - 2 * P, 4 * P, 2 * P)
+    }
+    grow(x, base, tall, 1); grow(x, base, Math.round(tall * 0.8), -1); grow(x + 2 * P, base, Math.round(tall * 0.6), 1)
+    return `<path class="c${c}" d="${stems}"/><path class="tip" d="${tips}"/>`
+  }
+  // a dome of brain coral: scalloped, rimmed, banded
+  const dome = (x: number, base: number, r: number, c: number) => {
+    let d = '', rim = ''
+    for (let j = 0; j < r; j++) { const half = Math.round(r * Math.sqrt(1 - ((r - j - 0.5) / r) ** 2) * 1.4); d += run(x - half * P, base - (r - j) * P, 2 * half * P); if (j < 2) rim += run(x - half * P, base - (r - j) * P, 2 * half * P) }
+    return `<path class="c${c}" d="${d}"/><path fill="url(#scale)" class="scl" d="${d}"/><path fill="url(#lt50)" d="${rim}"/>`
+  }
+  // a sea fan: lines spreading up from one root, dithered between them
+  const fan = (x: number, base: number, r: number, c: number) => {
+    let d = ''
+    for (let a = -1.1; a <= 1.1; a += 0.28) for (let s = 2; s < r; s += 2) d += run(snap(x + Math.sin(a) * s * P), snap(base - Math.cos(a) * s * P), P, 2 * P)
+    let back = ''
+    for (let j = 1; j < r; j++) { const half = Math.round(Math.sqrt(r * r - j * j) * Math.sin(1.2)); back += run(x - half * P, base - j * P, 2 * half * P) }
+    return `<path fill="url(#c${c}50)" d="${back}"/><path class="c${c}" d="${d}"/>`
+  }
+  // swaying stalks: anemone tentacles and kelp, each piece swaying on the one below it
+  const stalk = (x: number, base: number, pieces: number, len: number, cls: string, leafy: number) => {
+    let s = ''
+    for (let k = pieces - 1; k >= 0; k--) {
+      const y = base - (k + 1) * len * P, leaf = leafy ? (k % 2 ? run(x + 3 * P, y + 2 * P, 3 * P, 3 * P) : run(x - 3 * P, y + 4 * P, 3 * P, 3 * P)) : ''
+      const tip = k === pieces - 1 ? `<path class="tip" d="${run(x - P, y - 2 * P, 4 * P, 2 * P)}"/>` : ''
+      const piece = `<path d="${run(x, y, 3 * P, len * P)}${leaf}"/>${tip}`
+      s = k === 0 ? piece + s : `<g class="sway" style="animation-duration:${n1(5 + rand() * 3)}s;animation-delay:-${n1(rand() * 8)}s">${piece}${s}</g>`
+    }
+    return `<g class="${cls}">${s}</g>`
+  }
+  // rock mounds at either side, scalloped, rimmed and banded down their slopes; the reef grows on them
+  let mound = `M-400 ${H + 40}V${FLOOR + 60}`, ridge = '', wob = 0
+  const tops: [number, number][] = []
+  for (let x = -400; x < W + 400; x += 6 * P) {
+    wob = Math.max(-1, Math.min(1, wob + (rand() - 0.5) * 0.9))
+    const top = FLOOR + 60 - snap(Math.max(0, side(x + 3 * P) * 290 + wob * 30 - 20))
+    tops.push([x, top]); mound += `V${top}h${6 * P}`; ridge += run(x, top, 6 * P)
+  }
+  mound += `V${H + 40}Z`
+  const at = (x: number): number => Math.min(FLOOR, (tops.find(([tx]) => tx + 6 * P > x) ?? tops[tops.length - 1]!)[1])
+  const rocks = `<path id="rk" class="rock" d="${mound}"/><use href="#rk" fill="url(#scale)" class="scl"/>` +
+    ([[1, 75], [2, 50], [3, 25], [10, 50], [11, 25], [22, 25]] as const).map(([dy, p]) => `<use href="#rr" y="${dy * P}" fill="url(#c3${p})" opacity="${dy > 3 ? 0.5 : 1}"/>`).join('') + `<use href="#rr" class="c3"/>`
+  let reef = ''
+  // kelp at the back of each side
+  for (const x of [20, 76, 128, 1452, 1508, 1564]) reef += stalk(x, at(x) + 8, 10 + Math.round(rand() * 6), 10, 'kelp', 1)
+  for (const [x, r, c] of [[236, 22, 2], [1330, 26, 2], [430, 14, 0]] as const) reef += fan(x, at(x) + 4, r, c)
+  for (const [x, tall, c] of [[48, 60, 0], [176, 44, 1], [320, 34, 3], [1250, 40, 1], [1400, 56, 0], [1540, 48, 3]] as const) reef += coral(x, at(x) + 4, tall, c)
+  for (const [x, r, c] of [[110, 10, 1], [380, 8, 2], [520, 6, 0], [1170, 7, 2], [1300, 10, 1], [1480, 12, 2]] as const) reef += dome(x, at(x) + 6, r, c)
+  // anemones: a crown of tentacles of different heights, tipped bright, swaying together
+  for (const [x, c] of [[260, 3], [470, 1], [1130, 3], [1360, 0]] as const) {
+    const base = at(x) + 4
+    let arms = '', tips = ''
+    for (let k = -4; k <= 4; k++) { const tall = (9 - Math.abs(k) * 1.6 + rand() * 2) * P; arms += run(x + k * 2 * P, snap(base - tall), P, snap(tall)); tips += run(x + k * 2 * P, snap(base - tall) - P, P, 2 * P) }
+    reef += `<g class="sway" style="animation-duration:${n1(5 + rand() * 3)}s;animation-delay:-${n1(rand() * 8)}s"><path class="c${c}" d="${arms}"/><path class="tip" d="${tips}"/></g><path class="c${c}" d="${run(x - 10 * P, base - 2 * P, 20 * P, 3 * P)}"/>`
+  }
+
+  // fish, striped: 1 body, 2 belly, 3 eye, 4 fins, 5 stripe; each faces right
+  const FISH: readonly (readonly string[])[] = [
+    ['......1111........', '....1115511.......', '4..111555111......', '44111115551111111.', '441111155511113111', '44122225552222221.', '4..222255522......', '....22255.........', '......4...........'],
+    ['......4......', '.....44......', '....444......', '...4444......', '..111511111..', '.11115111311.', '4111151111111', '4412252222211', '4.12252222221', '..122522222..', '...4444......', '....444......', '.....44......', '......4......'],
+    ['....111111....', '..1115111511..', '.111111111111.', '41151111113111', '44111151111111', '44122222222211', '4.12252222521.', '..122222222...', '...2222222....'],
+    ['........11111.........', '44....111111111111....', '4441111111111111111...', '44455555555555555311..', '4442222222222222222221', '44....222222222222....', '........22222.........'],
+  ]
+  const sprites = FISH.map((rows, i) => `<g id="fish${i}">${([['1', 'fb'], ['2', 'fl'], ['4', 'fd'], ['5', 'fs'], ['3', 'fe']] as const).map(([ch, cls]) => `<path class="${cls}" d="${pixelPath(rows, ch, P)}"/>`).join('')}</g>`).join('') +
+    `<g id="jelly"><path class="jb" d="${pixelPath(['....1111....', '..11111111..', '.1111111111.', '111111111111', '111111111111'], '1', P)}"/><path class="jl" d="${pixelPath(['............', '...22..2....', '..2.....2...', '............', '222222222222'], '2', P)}"/>` +
+    `<path class="jt" d="${pixelPath(['5.5.5..5.5.5', '5.5..5.5..5.', '.5.5.5..5.5.', '5..5..5.5..5', '.5..5..5..5.', '5..5.....5..', '...5..5.....'], '5', P, 0, 5 * P)}"/></g>`
+  let fish = ''
+  const LANES: readonly (readonly [number, number, number])[] = [[110, 2, 3], [190, 1, 0], [250, 2, 1], [330, 1, 2], [400, 2, 0], [470, 1, 3], [530, 2, 2], [600, 1, 1], [660, 2, 3], [730, 1, 0], [790, 1, 2]]
+  LANES.forEach(([y, s, kind], i) => {
+    const left = i % 2 === 1, secs = Math.round((s === 2 ? 70 : 110) + rand() * 40), at = rand()
+    fish += `<g style="translate:0 ${y}px;opacity:${s === 2 ? 1 : 0.7}"><g class="swim" style="transform:translateX(${snap(-300 + 2200 * (left ? 1 - at : at))}px);animation-duration:${secs}s;animation-delay:-${n1(at * secs)}s${left ? ';animation-direction:reverse' : ''}">` +
+      `<g class="bob" style="animation-delay:-${n1(rand() * 8)}s"><use href="#fish${kind}" style="--f:var(--w${i % 4});--g:var(--w${(i + 2) % 4})" transform="scale(${left ? -s : s} ${s})"/></g></g></g>`
+  })
+  // jellyfish drifting up the sides
+  let jellies = ''
+  for (const [x, c, s] of [[380, 2, 2], [470, 3, 1], [1160, 2, 1], [1240, 3, 2]] as const) {
+    const secs = Math.round(80 + rand() * 40), at = rand()
+    jellies += `<g style="translate:${x}px 0;opacity:.85"><g class="drift" style="transform:translateY(${snap(FLOOR - 1100 * at)}px);animation-duration:${secs}s;animation-delay:-${n1(at * secs)}s"><g class="pulse" style="animation-delay:-${n1(rand() * 6)}s"><use href="#jelly" style="--j:var(--w${c})" transform="scale(${s})"/></g></g></g>`
+  }
+
+  // bubbles rising from the reef, and motes of plankton
+  let bubbles = '', motes = ''
+  const RING = ['.##.', '#..#', '#..#', '.##.']
+  for (const x of [96, 232, 312, 1264, 1368, 1504]) {
+    for (let k = 0; k < 3; k++) {
+      const secs = Math.round(18 + rand() * 8), big = rand() < 0.4
+      bubbles += `<g class="rise" style="translate:${x}px 0;transform:translateY(${snap(FLOOR - 40 - rand() * 600)}px);animation-duration:${secs}s;animation-delay:-${n1((k / 3 + rand() * 0.1) * secs)}s"><path class="wob" d="${pixelPath(RING, '#', big ? 3 : 2)}" style="animation-delay:-${n1(rand() * 6)}s"/></g>`
+    }
+  }
+  for (let i = 0; i < 60; i++) motes += run(snap(rand() * W), snap(TOP + 20 + rand() * (FLOOR - TOP - 60)), P)
+
+  return shell(theme, moving, {
+    tune: '--fish:1',
+    defs: tiles + sprites + `<path id="se" d="${edge}"/><path id="rr" d="${ridge}"/>`,
+    css:
+      WATER.map((c, i) => `.b${i}{fill:${c}}`).join('') +
+      `.surf{fill:color-mix(in srgb,var(--w1) 50%,var(--text));opacity:.7}` +
+      `.rays g{opacity:.1;animation:ray 16s ease-in-out infinite alternate}@keyframes ray{to{opacity:.2}}.ray{fill:var(--text)}` +
+      `.motes{fill:var(--text);opacity:.25}` +
+      `.c0{fill:var(--w0)}.c1{fill:var(--w1)}.c2{fill:var(--w2)}.c3{fill:var(--w3)}.lt{fill:var(--text)}.tip{fill:color-mix(in srgb,var(--text) 55%,var(--w0))}.scl{opacity:.18}` +
+      `.kelp{fill:color-mix(in srgb,var(--w1) 65%,var(--w0))}.rock{fill:color-mix(in srgb,var(--ground) 55%,var(--w2))}` +
+      `.sand{fill:color-mix(in srgb,var(--ground) 45%,var(--w3))}.sd{fill:color-mix(in srgb,var(--ground) 25%,var(--w3))}` +
+      `.pools path{fill:var(--text);opacity:.06;animation:pool 12s ease-in-out infinite alternate}@keyframes pool{to{opacity:.16}}` +
+      `.fb{fill:var(--f)}.fl{fill:color-mix(in srgb,var(--f) 50%,var(--text))}.fd{fill:var(--g)}.fs{fill:color-mix(in srgb,var(--text) 85%,var(--f))}.fe{fill:var(--ground)}` +
+      `.jb{fill:var(--j);opacity:.75}.jl{fill:var(--text);opacity:.6}.jt{fill:color-mix(in srgb,var(--j) 60%,var(--text));opacity:.7}` +
+      `.sway{animation:sway 6s steps(2,jump-none) infinite alternate}@keyframes sway{from{transform:translateX(-2px)}to{transform:translateX(2px)}}` +
+      `.swim{animation:swim 90s steps(550) infinite}@keyframes swim{from{transform:translateX(-300px)}to{transform:translateX(1900px)}}` +
+      `.bob{animation:bob 4s steps(2,jump-none) infinite alternate}@keyframes bob{from{transform:translateY(0)}to{transform:translateY(${P}px)}}` +
+      `.drift{animation:drift 100s steps(275) infinite}@keyframes drift{from{transform:translateY(${FLOOR}px)}to{transform:translateY(-200px)}}` +
+      `.pulse{animation:pulse 5s steps(2,jump-none) infinite alternate}@keyframes pulse{from{transform:translateY(0)}to{transform:translateY(-${P}px)}}` +
+      `.rise{animation:rise 20s steps(${Math.round((FLOOR - 60) / P)}) infinite}@keyframes rise{from{transform:translateY(${FLOOR - 40}px)}to{transform:translateY(20px)}}` +
+      `.wob{fill:var(--text);opacity:.5;animation:wob 3s steps(2,jump-none) infinite alternate}@keyframes wob{from{transform:translateX(0)}to{transform:translateX(${P}px)}}`,
+    body:
+      water +
+      `<path class="surf" d="${surf}"/>` +
+      `<g class="rays">${rays}</g><path class="motes" d="${motes}"/>` +
+      `<g>${jellies}</g><g>${bubbles}</g><g>${fish}</g>` + rocks +
+      `<path class="sand" d="${sand}"/>` +
+      ([[1, 75], [4, 50], [5, 25], [12, 50], [13, 25], [24, 25]] as const).map(([dy, p]) => `<use href="#se" y="${dy * P}" fill="url(#sd${p})"/>`).join('') +
+      `<g class="pools">${pools}</g>${shells}` +
+      reef,
+  })
+}
+
+/** Dream valley: a valley in small square pixels. A ringed sun sets behind glowing, scalloped hills and rises again, a
+ * ringed moon hangs opposite, rimmed clouds drift, a luminous river winds up the valley past stones and flowers, spruce stand
+ * on the far ridges, mushrooms glow at the sides with motes rising round them, stars come out at night. */
+const valley = (theme: Theme, moving: boolean): string => {
+  const rand = seeded(377)
+  const P = 4, HZ = 560, SECS = 150
+  const side = (x: number) => Math.max(Math.exp(-(((x - 150) / 360) ** 2)), Math.exp(-(((x - 1450) / 360) ** 2)))
+  const snap = (v: number) => Math.round(v / P) * P
+  const run = (x: number, y: number, w: number, h = P) => `M${x} ${y}h${w}v${h}h${-w}z`
+
+  // the sky: vivid bands from a deep top to a hot horizon, each dithered into the one below in three steps
+  const SKY = [
+    'color-mix(in srgb,var(--ground) 82%,var(--w2))',
+    'color-mix(in srgb,var(--ground) 68%,var(--w2))',
+    'color-mix(in srgb,var(--ground) 52%,var(--w2))',
+    'color-mix(in srgb,var(--ground) 38%,color-mix(in srgb,var(--w2) 60%,var(--w3)))',
+    'color-mix(in srgb,var(--ground) 26%,color-mix(in srgb,var(--w2) 30%,var(--w3)))',
+    'color-mix(in srgb,var(--ground) 16%,var(--w3))',
+    'color-mix(in srgb,var(--ground) 10%,color-mix(in srgb,var(--w3) 50%,var(--w0)))',
+    'color-mix(in srgb,var(--ground) 4%,var(--w0))',
+  ]
+  const tall = (HZ - 80) / (SKY.length - 1)
+  let sky = '', tiles = ''
+  SKY.forEach((_, i) => {
+    const y = i === 0 ? -400 : Math.round(80 + (i - 1) * tall)
+    sky += `<rect class="k${i}" x="-400" y="${y}" width="${W + 800}" height="${(i === 0 ? 480 : Math.ceil(tall)) + 1}"/>`
+    if (i > 0) sky += [75, 50, 25].map((p, k) => `<rect x="-400" y="${y + k * 3 * P}" width="${W + 800}" height="${3 * P}" fill="url(#d${i - 1}${p})"/>`).join('')
+    tiles += ditherTiles(`d${i}`, `k${i}`, P)
+  })
+  for (const t of ['sun', 'ring', 'riv', 'rim1', 'rim2', 'rim3', 'cl']) tiles += ditherTiles(t, t === 'sun' ? 'sunc' : t, P)
+  // scallops: rows of little domes, the texture of the hills
+  tiles += `<pattern id="scale" width="${8 * P}" height="${6 * P}" patternUnits="userSpaceOnUse"><path d="M0 ${2 * P}h${P}v-${P}h${P}v-${P}h${2 * P}v${P}h${P}v${P}h${P}v${P}h-${6 * P}zM${4 * P} ${5 * P}h${P}v-${P}h${P}v-${P}h${2 * P}v${P}h${P}v${P}h${-5 * P}z" fill="#fff"/></pattern>`
+
+  // small sprites, drawn once: a grass tuft, a flower, a spruce, a little mushroom
+  const sprites =
+    `<path id="tuft" d="${pixelPath(['#.#..#', '#.#.#.', '.###..', '..#...'], '#', P)}"/>` +
+    `<g id="flower"><path class="fs" d="${pixelPath(['......', '..#...', '..#...', '.##...'], '#', P)}"/><path d="${pixelPath(['.#.', '#.#', '.#.'], '#', P, P, -2 * P)}"/></g>` +
+    `<path id="spruce" d="${pixelPath(['...#...', '..###..', '...#...', '..###..', '.#####.', '..###..', '.#####.', '#######', '...#...'], '#', P)}"/>` +
+    `<g id="tiny"><path class="st" d="${pixelPath(['.....', '..#..', '..#..', '..#..'], '#', P, 0, 2 * P)}"/><path d="${pixelPath(['.###.', '#####', '#.#.#'], '#', P)}"/></g>`
+
+  // stars, some of them crosses that slowly brighten and fade
+  let stars = '', sparks = ''
+  for (let i = 0; i < 220; i++) { const big = rand() < 0.12 ? 2 : 1; stars += run(snap(rand() * (W + 200) - 100), snap(rand() * 400 - 40), P * big, P * big) }
+  for (let i = 0; i < 14; i++) {
+    const x = snap(rand() * W), y = snap(rand() * 330), a = rand() < 0.4 ? 2 : 1
+    sparks += `<path d="${run(x, y - a * P, P, a * P)}${run(x - a * P, y, (2 * a + 1) * P)}${run(x, y + P, P, a * P)}" style="animation-duration:${n1(5 + rand() * 4)}s;animation-delay:-${n1(rand() * 9)}s"/>`
+  }
+
+  // the sun in rings of dither; a moon with craters and a band; a small planet low down
+  const SX = 1264, SY = 250
+  const sun =
+    `<g class="sun"><path fill="url(#ring25)" d="${pixelDisc(SX, SY, 38, P)}"/><path fill="url(#ring50)" d="${pixelDisc(SX, SY, 32, P)}"/><path fill="url(#sun75)" d="${pixelDisc(SX, SY, 27, P)}"/>` +
+    `<path class="sunc" d="${pixelDisc(SX, SY, 23, P)}"/><path class="sunr" d="${pixelDisc(SX, SY, 19, P)}"/><path class="sunc" d="${pixelDisc(SX, SY, 16, P)}"/><path class="sunh" d="${pixelDisc(SX - 6 * P, SY - 6 * P, 6, P)}${pixelDisc(SX - 10 * P, SY - 1 * P, 2, P)}"/></g>`
+  const MX = 296, MY = 168
+  let craters = ''
+  for (const [dx, dy, r] of [[-4, -3, 3], [3, 2, 2], [-5, 4, 2], [5, -5, 1], [0, 7, 1]] as const) craters += pixelDisc(MX + dx * P, MY + dy * P, r, P)
+  const moon =
+    `<g class="moon"><path class="band" d="${run(MX - 26 * P, MY - P, 52 * P, 2 * P)}"/><path class="mo" d="${pixelDisc(MX, MY, 13, P)}"/><path class="mc" d="${craters}"/>` +
+    `<path class="mh" d="${pixelDisc(MX - 4 * P, MY - 5 * P, 3, P)}"/><path class="band" d="${run(MX - 26 * P, MY + P, 18 * P, P)}${run(MX + 9 * P, MY + P, 17 * P, P)}"/></g>` +
+    `<path class="orb" d="${pixelDisc(486, 486, 7, P)}"/><path class="mh" d="${pixelDisc(478, 478, 2, P)}"/>`
+
+  // clouds: round bumps on a flat base, rimmed in a bright colour along the top with a dithered glow under it,
+  // a second colour along the base
+  const cloud = (cx: number, cy: number, w: number, rows: number) => {
+    const bumps = [[-0.6 * w, 0.55 * rows], [-0.25 * w, 0.9 * rows], [0.12 * w, 0.7 * rows], [0.38 * w + rand() * 3, 0.85 * rows], [0.7 * w, 0.45 * rows]]
+    let body = '', lit = '', glow = '', shade = ''
+    for (let c = Math.round(-w * 1.3); c <= Math.round(w * 1.3); c++) {
+      let top = rows
+      for (const [bx, r] of bumps) { const dx = (c - bx) / 1.3; if (Math.abs(dx) < r) top = Math.min(top, Math.round(rows - Math.sqrt(r * r - dx * dx))) }
+      if (top >= rows - 2) continue
+      const x = cx + c * P
+      body += run(x, cy + top * P, P, (rows - top) * P)
+      lit += run(x, cy + top * P, P, 2 * P)
+      glow += run(x, cy + (top + 2) * P, P, 3 * P)
+      shade += run(x, cy + (rows - 2) * P, P, 2 * P)
+    }
+    return `<path class="cb" d="${body}"/><path fill="url(#cl50)" d="${glow}"/><path class="cl" d="${lit}"/><path class="cs" d="${shade}"/>`
+  }
+  let clouds = ''
+  for (const [y, w, rows, far] of [[60, 20, 10, 1], [140, 32, 14, 0], [240, 16, 8, 1], [310, 36, 16, 0], [410, 18, 8, 1], [450, 26, 12, 0]] as const) {
+    const secs = far ? 560 : 400, at = rand()
+    clouds += `<g class="drift${far ? ' far' : ''}" style="transform:translateX(${snap(-500 + 2600 * at)}px);animation-duration:${secs}s;animation-delay:-${Math.round(at * secs)}s">${cloud(0, y, w, rows)}</g>`
+  }
+
+  // hills in steps: each has a glowing rim, contour bands down its slope that follow the rim, and scallops
+  let hillDefs = ''
+  const hills = (n: number, cls: string, rim: string, base: number, low: number, high: number, step: number, seed: number) => {
+    const r = seeded(seed), tops: [number, number][] = []
+    let d = `M-400 ${H + 40}V${base}`, edge = '', wob = 0
+    for (let x = -400; x < W + 400; x += step) {
+      wob = Math.max(-1, Math.min(1, wob + (r() - 0.5) * 0.9))
+      const top = base - snap(low + (high - low) * side(x + step / 2) + wob * 28)
+      tops.push([x, top])
+      d += `V${top}h${step}`
+      edge += run(x, top, step)
+    }
+    hillDefs += `<path id="hb${n}" d="${d}V${H + 40}Z"/><path id="he${n}" d="${edge}"/>`
+    const at = (x: number): number => (tops.find(([tx]) => tx + step > x) ?? tops[tops.length - 1]!)[1]
+    const drawn =
+      `<use href="#hb${n}" class="${cls}"/><use href="#hb${n}" fill="url(#scale)" class="scl"/>` +
+      `<use href="#he${n}" y="${P}" fill="url(#${rim}75)"/><use href="#he${n}" y="${2 * P}" fill="url(#${rim}50)"/><use href="#he${n}" y="${3 * P}" fill="url(#${rim}25)"/>` +
+      ([[9, 50, 0.7], [10, 25, 0.7], [18, 50, 0.5], [19, 25, 0.5], [30, 25, 0.4], [46, 25, 0.3]] as const).map(([dy, p, o]) => `<use href="#he${n}" y="${dy * P}" fill="url(#${rim}${p})" opacity="${o}"/>`).join('') +
+      `<use href="#he${n}" class="${rim}"/>`
+    return { drawn, at }
+  }
+
+  const back = hills(0, 'h0', 'rim2', HZ + 8, 4, 250, 3 * P, 5)
+  const mid = hills(1, 'h1', 'rim1', HZ + 130, 0, 230, 4 * P, 6)
+  const near = hills(2, 'h2', 'rim3', H + 30, -200, 260, 5 * P, 7)
+
+  // spruce along the far ridge, where it rises clear of the nearer range
+  let trees = ''
+  for (let x = -60; x < W + 60; x += snap(14 + rand() * 30)) {
+    const top = back.at(x)
+    if (top > HZ - 20 || mid.at(x) < top + 40) continue
+    trees += `<use href="#spruce" x="${x}" y="${top - 8 * P + snap(rand() * 3 * P)}" class="tree"/>`
+  }
+
+  // the river winds up the valley to the horizon: glowing water, dithered banks, stones, glints that come and go
+  let river = '', banks = '', glints = '', stones = '', flowers = ''
+  for (let y = HZ + P, i = 0; y < H + 40; y += P, i++) {
+    const t = (y - HZ) / (H - HZ), cx = 800 + 170 * Math.sin(t * 7.2 + 0.6) * t + 60 * Math.sin(t * 3.1)
+    const half = snap(4 + 190 * t ** 1.6), x = snap(cx)
+    river += run(x - half, y, 2 * half)
+    banks += run(x - half - 3 * P, y, 3 * P) + run(x + half, y, 3 * P)
+    if (rand() < 0.3) glints += `<path d="${run(snap(x - half + rand() * 2 * half), y, P * (1 + Math.round(rand() * 3)))}" style="animation-duration:${n1(6 + rand() * 5)}s;animation-delay:-${n1(rand() * 11)}s"/>`
+    if (t > 0.3 && i % 9 === 0 && rand() < 0.6) stones += pixelDisc(snap(x - half * 0.7 + rand() * half * 1.4), y, Math.round(1 + t * 3), P)
+    if (t > 0.15 && i % 3 === 0) {
+      const bank = rand() < 0.5 ? x - half - snap(8 + rand() * 60 * t) - 6 * P : x + half + snap(8 + rand() * 60 * t)
+      flowers += rand() < 0.45 ? `<use href="#flower" x="${bank}" y="${y - 2 * P}" class="c${Math.floor(rand() * 4)}"/>` : `<use href="#tuft" x="${bank}" y="${y - 2 * P}" class="tu"/>`
+    }
+  }
+
+  // mushrooms at either side: domed caps with spots and a pale rim, glowing gills, stems; little ones around them;
+  // motes of light drifting up past them
+  let shrooms = '', motes = ''
+  const cap = (x: number, top: number, r: number, c: number) => {
+    let body = '', rim = '', spots = ''
+    for (let j = 0; j < r; j++) {
+      const half = Math.round(r * Math.sqrt(1 - ((r - j - 0.5) / r) ** 2) * 1.25)
+      body += run(x - half * P, top - (r - j) * P, 2 * half * P)
+      if (j >= r - 2) rim += run(x - half * P, top - (r - j) * P, 2 * half * P)
+    }
+    for (let k = 0; k < r / 1.6; k++) spots += pixelDisc(snap(x + (rand() - 0.5) * r * 1.6 * P), snap(top - (2 + rand() * (r - 4)) * P), 1 + Math.round(rand() * 2), P)
+    return `<path class="cap c${c}" d="${body}"/><path fill="url(#rim150)" d="${rim}"/><path class="sp" d="${spots}"/>`
+  }
+  for (const [x, h, r, c] of [[64, 150, 22, 2], [196, 96, 14, 0], [292, 64, 10, 3], [352, 40, 6, 1], [1240, 36, 6, 1], [1300, 70, 10, 0], [1416, 122, 18, 3], [1544, 170, 24, 2]] as const) {
+    const base = H - snap(20 + rand() * 30), top = base - h, stem = Math.max(2, Math.round(r / 4)), gills = snap(r * 1.25 * P)
+    shrooms +=
+      `<path class="st" d="${run(x - stem * P, top, 2 * stem * P, base - top)}"/><path class="sts" d="${run(x + (stem - 1) * P, top + 2 * P, P, base - top - 2 * P)}"/>` +
+      `<path class="gl" d="${run(x - gills + P, top, 2 * gills - 2 * P, 2 * P)}"/><path fill="url(#riv50)" d="${run(x - gills + 3 * P, top + 2 * P, 2 * gills - 6 * P, 2 * P)}"/>` +
+      cap(x, top, r, c)
+    for (let k = 0; k < 3; k++) shrooms += `<use href="#tiny" x="${snap(x - 30 + rand() * 60 + (k - 1) * r * 3)}" y="${base - 5 * P + snap(rand() * 12)}" class="c${(c + k + 1) % 4}"/>`
+    for (let k = 0; k < 3; k++) {
+      const secs = Math.round(14 + rand() * 10)
+      motes += `<path d="${run(snap(x - r * P + rand() * 2 * r * P), top, P, P)}" style="animation-duration:${secs}s;animation-delay:-${n1(rand() * secs)}s"/>`
+    }
+  }
+  let tufts = ''
+  for (let i = 0; i < 46; i++) tufts += `<use href="#tuft" x="${snap(rand() < 0.5 ? rand() * 420 : W - rand() * 420)}" y="${snap(H - 10 - rand() * 120)}" class="tu"/>`
+
+  return shell(theme, moving, {
+    tune: '--night:.4',
+    defs: tiles + sprites + hillDefs,
+    css:
+      SKY.map((c, i) => `.k${i}{fill:${c}}`).join('') +
+      `.sunc{fill:color-mix(in srgb,var(--w0) 70%,var(--text))}.sunr{fill:var(--w0)}.ring{fill:var(--w1)}.sunh{fill:var(--text);opacity:.5}` +
+      `.sun{animation:sun ${SECS}s steps(80) infinite alternate}@keyframes sun{to{transform:translateY(${80 * P}px)}}` +
+      `.mo{fill:color-mix(in srgb,var(--w1) 45%,var(--text))}.mc{fill:color-mix(in srgb,var(--w1) 70%,var(--ground))}.mh{fill:var(--text);opacity:.6}.band{fill:var(--w3);opacity:.8}` +
+      `.orb{fill:color-mix(in srgb,var(--w2) 60%,var(--w0))}` +
+      `.stars{fill:var(--text);opacity:.3;animation:stars ${SECS}s linear infinite alternate}@keyframes stars{50%{opacity:.3}to{opacity:.9}}` +
+      `.sparks path{fill:var(--text);opacity:.3;animation:spark 6s ease-in-out infinite alternate}@keyframes spark{to{opacity:.9}}` +
+      `.cb{fill:color-mix(in srgb,var(--ground) 35%,var(--w2))}.cl{fill:var(--w0)}.cs{fill:var(--w1)}.far{opacity:.6}` +
+      `.drift{animation:drift 400s steps(650) infinite}@keyframes drift{from{transform:translateX(-500px)}to{transform:translateX(2100px)}}` +
+      `.h0{fill:color-mix(in srgb,var(--ground) 45%,var(--w2))}.h1{fill:color-mix(in srgb,var(--ground) 55%,var(--w1))}.h2{fill:color-mix(in srgb,var(--ground) 55%,var(--w3))}.scl{opacity:.07}` +
+      `.rim1{fill:var(--w0)}.rim2{fill:color-mix(in srgb,var(--w1) 70%,var(--text))}.rim3{fill:color-mix(in srgb,var(--w2) 60%,var(--text))}` +
+      `.tree{fill:color-mix(in srgb,var(--ground) 70%,var(--w2))}` +
+      `.riv{fill:var(--w1)}.river{fill:color-mix(in srgb,var(--w0) 65%,var(--text))}.stones{fill:color-mix(in srgb,var(--w1) 50%,var(--ground))}` +
+      `.glints path{fill:var(--text);opacity:.15;animation:glint 8s ease-in-out infinite alternate}@keyframes glint{to{opacity:.7}}` +
+      `.fs{fill:color-mix(in srgb,var(--ground) 40%,var(--w1))}.tu{fill:color-mix(in srgb,var(--w1) 60%,var(--text))}` +
+      `.st{fill:color-mix(in srgb,var(--text) 75%,var(--w1))}.sts{fill:color-mix(in srgb,var(--text) 40%,var(--w1))}.gl{fill:var(--w1)}.sp{fill:var(--text);opacity:.85}` +
+      `.motes path{fill:var(--text);opacity:0;animation:mote 18s linear infinite}@keyframes mote{0%{opacity:0;transform:translateY(0)}20%{opacity:.8}100%{opacity:0;transform:translateY(-160px)}}` +
+      `.dark{fill:var(--ground);opacity:0;animation:dark ${SECS}s linear infinite alternate}@keyframes dark{45%{opacity:0}to{opacity:var(--night)}}`,
+    body:
+      // night darkens the sky behind the stars, then the land: the back range's outline covers it all
+      sky + moon + sun + clouds +
+      `<rect class="dark" x="-400" y="-400" width="${W + 800}" height="${H + 800}"/>` +
+      `<path class="stars" d="${stars}"/><g class="sparks">${sparks}</g>` +
+      back.drawn + trees + mid.drawn +
+      `<path fill="url(#riv50)" d="${banks}"/><path class="river" d="${river}"/><path class="stones" d="${stones}"/><g class="glints">${glints}</g>${flowers}` +
+      near.drawn + tufts + shrooms + `<g class="motes">${motes}</g>` +
+      `<use href="#hb0" class="dark"/>`,
+  })
+}
+
+export const SCENERY: Readonly<Record<Scenery, (theme: Theme, moving: boolean) => string>> = { grid, sunset, city, plotter, weave, flock, nebula, ridges, circuit, tunnel, borealis, kaleidoscope, aquarium, valley }
+export const SCENERIES: readonly Scenery[] = ['grid', 'sunset', 'city', 'plotter', 'weave', 'flock', 'nebula', 'ridges', 'circuit', 'tunnel', 'borealis', 'kaleidoscope', 'aquarium', 'valley']

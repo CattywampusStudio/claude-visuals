@@ -1,7 +1,7 @@
 // The backgrounds behind the chat. Here: the lava lamp (four wash colours as wax that rises, sinks and merges
 // through a blur-then-threshold "goo" filter, with a glow from the base), its filter-free soft version, dissolving
-// pixels and falling symbols. Eleven more drawn scenes are in scenery.ts. One SVG serves both modes: its colours are
-// CSS variables that a prefers-color-scheme rule swaps.
+// pixels and falling symbols. Eleven more drawn scenes are in scenery.ts. Every theme is dark, so each SVG has one set of
+// colours, as CSS variables.
 import { SCENERIES, SCENERY, seeded } from './scenery.ts'
 import type { Scenery } from './scenery.ts'
 import type { Mode, Theme } from './themes.ts'
@@ -88,8 +88,7 @@ export const backdrop = (theme: Theme, kind: Kind, moving: boolean, speed = 1): 
 
   const style =
     `<style>` +
-    `svg{${vars(theme.dark, 0.7)}}` +
-    `@media (prefers-color-scheme:light){svg{${vars(theme.light, 0.5)}}}` +
+    `svg{${vars(theme.colors, 0.7)}}` +
     `.ground{fill:var(--ground)}` +
     [0, 1, 2, 3].map(i => `.c${i}{fill:var(--w${i})}.s${i}{stop-color:var(--w${i})}`).join('') +
     `.wax{opacity:var(--wax)}` +
@@ -135,10 +134,10 @@ export const backdrop = (theme: Theme, kind: Kind, moving: boolean, speed = 1): 
   )
 }
 
-const frame = (theme: Theme, wax: [number, number], css: string, defs: string, body: string): string =>
+const frame = (theme: Theme, wax: number, css: string, defs: string, body: string): string =>
   `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ${W} ${H}" preserveAspectRatio="xMidYMid slice">` +
   `<defs>${defs}<radialGradient id="glow" cx="50%" cy="100%" r="80%"><stop class="s2" offset="0" stop-opacity=".4"/><stop class="s2" offset="1" stop-opacity="0"/></radialGradient></defs>` +
-  `<style>svg{${vars(theme.dark, wax[0])};--text:${theme.dark.text}}@media (prefers-color-scheme:light){svg{${vars(theme.light, wax[1])};--text:${theme.light.text}}}` +
+  `<style>svg{${vars(theme.colors, wax)};--text:${theme.colors.text}}` +
   `.ground{fill:var(--ground)}${[0, 1, 2, 3].map(i => `.c${i}{fill:var(--w${i})}.s${i}{stop-color:var(--w${i})}`).join('')}${css}</style>` +
   `<rect class="ground" x="-400" y="-400" width="${W + 800}" height="${H + 800}"/>` +
   `<rect x="-400" y="${Math.round(H * 0.4)}" width="${W + 800}" height="${Math.round(H * 0.6) + 400}" fill="url(#glow)" opacity=".6"/>` +
@@ -168,7 +167,7 @@ const pixels = (theme: Theme): string => {
     `.p{opacity:calc(var(--wax)*.6);transform-box:fill-box;transform-origin:50% 50%;animation:dissolve 8s ease-in-out infinite}` +
     `@keyframes dissolve{0%{opacity:0;transform:translateY(14px) scale(.55)}15%{opacity:var(--wax);transform:translateY(0) scale(1)}60%{opacity:var(--wax);transform:translateY(-8px) scale(1)}80%{opacity:calc(var(--wax)*.5);transform:translateY(-20px) scale(.8)}100%{opacity:0;transform:translateY(-34px) scale(.45)}}` +
     `@media (prefers-reduced-motion:reduce){.p{animation:none}}`
-  return frame(theme, [1, 0.8], css, '', body)
+  return frame(theme, 1, css, '', body)
 }
 
 // Symbols for the rain: digits, operators and Greek letters, in a face already on the Mac.
@@ -210,5 +209,5 @@ const rain = (theme: Theme): string => {
     `.rain{opacity:var(--wax)}` +
     `.f{animation:fall 12s linear infinite}@keyframes fall{from{transform:translateY(var(--from))}to{transform:translateY(var(--to))}}` +
     `@media (prefers-reduced-motion:reduce){.f{animation:none}}`
-  return frame(theme, [0.85, 0.6], css, '', `<g class="rain">${body}</g>`)
+  return frame(theme, 0.85, css, '', `<g class="rain">${body}</g>`)
 }

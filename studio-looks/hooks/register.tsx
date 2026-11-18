@@ -12,7 +12,10 @@ import type { Theme } from './themes.ts'
 const ME = 'studio-looks'
 const PANE = 'studio-looks'
 const TITLE = 'Looks'
-const BACKGROUNDS: readonly { value: Background; label: string }[] = [
+// Both lists are shown in alphabetical order, so a new theme or background finds its own place; "Colours only" stays last.
+const byLabel = (a: { label: string }, b: { label: string }) => a.label.localeCompare(b.label)
+const ORDERED: readonly Theme[] = [...THEMES].sort(byLabel)
+const BACKGROUNDS: readonly { value: Background; label: string }[] = ([
   { value: 'lamp', label: 'Lava lamp' },
   { value: 'soft', label: 'Soft glows' },
   { value: 'pixels', label: 'Dissolving pixels' },
@@ -27,8 +30,11 @@ const BACKGROUNDS: readonly { value: Background; label: string }[] = [
   { value: 'ridges', label: 'Signal ridges' },
   { value: 'circuit', label: 'Circuit traces' },
   { value: 'tunnel', label: 'Vector tunnel' },
-  { value: 'plain', label: 'Colours only' },
-]
+  { value: 'borealis', label: 'Northern lights' },
+  { value: 'kaleidoscope', label: 'Kaleidoscope' },
+  { value: 'aquarium', label: 'Pixel aquarium' },
+  { value: 'valley', label: 'Dream valley' },
+] as { value: Background; label: string }[]).sort(byLabel).concat({ value: 'plain', label: 'Colours only' })
 // What each drawn background shows, for the picture's description.
 const SHOWS: Record<Exclude<Background, 'plain'>, string> = {
   lamp: "lava lamp wax in the theme's colours",
@@ -45,10 +51,14 @@ const SHOWS: Record<Exclude<Background, 'plain'>, string> = {
   ridges: 'stacked rows of a trace with peaks that swell and sink',
   circuit: 'a circuit board of chips with pulses running along its traces',
   tunnel: 'frames of light coming toward you down a square tunnel',
+  borealis: 'curtains of northern lights over a frozen lake between snowy mountains',
+  kaleidoscope: 'shapes drifting through a kaleidoscope, mirrored twelve times into a slowly turning mandala',
+  aquarium: 'a vivid pixel reef: striped fish and glowing jellyfish over coral, sea fans, anemones and kelp',
+  valley: 'a vivid pixel valley: a ringed sun setting behind glowing hills, a winding river and mushrooms',
 }
 // Backgrounds of fine lines or small squares, and backgrounds that are pictures: each kind gets its own lightest veil.
 const FINE: readonly Background[] = ['pixels', 'plotter', 'weave', 'flock', 'ridges', 'circuit']
-const DRAWN: readonly Background[] = ['rain', 'grid', 'sunset', 'city', 'nebula', 'tunnel']
+const DRAWN: readonly Background[] = ['rain', 'grid', 'sunset', 'city', 'nebula', 'tunnel', 'borealis', 'kaleidoscope', 'aquarium', 'valley']
 const BARS: readonly { value: BarStyle; label: string }[] = [
   { value: 'lava', label: 'Matches the background' },
   { value: 'native', label: "The app's own" },
@@ -125,7 +135,7 @@ const look = (c: Choice): ThemeSetArgs => {
   // ground of their own. So a card is only as readable as the veil is strong; a mod cannot draw on those cards.
   const strength = { medium: 0.72, strong: 0.88, solid: 1 } as const
   const glass = c.veil === 'light' ? light : { blur: Math.max(light.blur, c.veil === 'medium' ? 8 : 14), opacity: strength[c.veil] }
-  return c.background === 'plain' ? { colors } : { colors, backdrop: { scene: `${c.background}_${c.motion}_${Math.round(c.speed * 100)}_${c.theme}`, glass } }
+  return c.background === 'plain' ? { colors, overrideColorScheme: 'dark' } : { colors, overrideColorScheme: 'dark', backdrop: { scene: `${c.background}_${c.motion}_${Math.round(c.speed * 100)}_${c.theme}`, glass } }
 }
 
 type Steps = Plan['steps']
@@ -282,8 +292,8 @@ const faster = async ($: EngineInterface) => pick($, { speed: stepSpeed((await r
 /** The picker's arrows: the preview moves to the theme before or after, wrapping round. */
 const stepBrowse = ($: EngineInterface, by: number) =>
   update($, browse, id => {
-    const at = Math.max(0, THEMES.findIndex(t => t.id === id))
-    return THEMES[(at + by + THEMES.length) % THEMES.length]!.id
+    const at = Math.max(0, ORDERED.findIndex(t => t.id === id))
+    return ORDERED[(at + by + ORDERED.length) % ORDERED.length]!.id
   })
 
 /** Applies the theme the preview shows, read at the press and not at the draw. */
@@ -294,7 +304,7 @@ const useBrowsed = async ($: EngineInterface) => {
 
 export const register: Register = on => {
   on('session.start', async ($, e, next) => {
-    await $.command.register({ name: 'looks', description: 'Pick the app look: theme, background and progress bar', argumentHint: '[theme] [lamp|soft|pixels|rain|grid|sunset|city|plotter|weave|flock|nebula|ridges|circuit|tunnel|plain] [off]' })
+    await $.command.register({ name: 'looks', description: 'Pick the app look: theme, background and progress bar', argumentHint: '[theme] [lamp|soft|pixels|rain|grid|sunset|city|plotter|weave|flock|nebula|ridges|circuit|tunnel|borealis|kaleidoscope|aquarium|valley|plain] [off]' })
     const stored = mend(await $.store.get('choice'))
     await update($, choice, () => stored)
     await update($, cleared, () => false)
@@ -326,7 +336,7 @@ export const register: Register = on => {
     const now = Object.keys(patch).length > 0 ? await pick($, patch) : await read($, choice)
     await $.ui.open({ id: PANE, title: TITLE })
 
-    return { text: `Look: ${themeOf(now.theme).label}, ${BACKGROUNDS.find(b => b.value === now.background)?.label ?? now.background}. Themes: ${THEMES.map(t => t.id).join(', ')}.` }
+    return { text: `Look: ${themeOf(now.theme).label}, ${BACKGROUNDS.find(b => b.value === now.background)?.label ?? now.background}. Themes: ${ORDERED.map(t => t.id).join(', ')}.` }
   })
 
   // The task list, as the session's task-list tools report it.
@@ -554,7 +564,7 @@ export const register: Register = on => {
     if (c.bar === 'native' || e.surface === 'terminal') {
       return (
         <Box flexDirection="column" gap="xs">
-          {list === null ? <Progress label={label} /> : <Progress label={label} value={done} max={total} valueText={`${done} of ${total}`} color={e.surface === 'terminal' ? undefined : theme.dark.accent} />}
+          {list === null ? <Progress label={label} /> : <Progress label={label} value={done} max={total} valueText={`${done} of ${total}`} color={e.surface === 'terminal' ? undefined : theme.colors.accent} />}
           {stepsList}
           {jobsRow}
           {looks}
@@ -583,7 +593,7 @@ export const register: Register = on => {
     const c = await read($, choice)
     const theme = themeOf(c.theme)
     const shown = themeOf(await read($, browse))
-    const at = THEMES.findIndex(t => t.id === shown.id)
+    const at = ORDERED.findIndex(t => t.id === shown.id)
     if (e.surface === 'terminal') {
       const { Box, Text } = $.ui.resolve(e)
 
@@ -602,7 +612,7 @@ export const register: Register = on => {
         </Text>
         <Svg source={preview(shown, c.background)} alt={`Preview of ${shown.label}: the app's page, panels, text, accent and progress bar in this theme's colours, over the background in use`} />
         <Text>
-          {shown.label} · {at + 1} of {THEMES.length}
+          {shown.label} · {at + 1} of {ORDERED.length}
           {shown.id === theme.id ? ' · in use' : ''}
         </Text>
         <Box flexDirection="row" gap="sm">
@@ -610,12 +620,12 @@ export const register: Register = on => {
           <Button key="next" label="Next ›" onPress={() => void stepBrowse($, 1)} />
           <Button key="use" label={shown.id === theme.id ? 'In use' : 'Use this theme'} variant={shown.id === theme.id ? 'secondary' : 'primary'} onPress={() => void useBrowsed($)} />
         </Box>
-        <Select key="theme" label="Theme" value={c.theme} options={THEMES.map(t => ({ value: t.id, label: t.label }))} onSelect={value => void pick($, { theme: themeOf(value).id })} />
+        <Select key="theme" label="Theme" value={c.theme} options={ORDERED.map(t => ({ value: t.id, label: t.label }))} onSelect={value => void pick($, { theme: themeOf(value).id })} />
         <Select key="background" label="Background" value={c.background} options={BACKGROUNDS} onSelect={value => void pick($, { background: mend({ background: value }).background })} />
         <Select key="motion" label="Motion in the background" value={c.motion} options={MOTIONS} onSelect={value => void pick($, { motion: mend({ motion: value }).motion })} />
         <Box flexDirection="row" gap="sm">
           <Button key="slower" label="−" variant="secondary" onPress={() => void slower($)} />
-          <Progress label="Animation speed" value={SPEEDS.indexOf(c.speed) + 1} max={SPEEDS.length} valueText={speedName(c.speed)} color={theme.dark.accent} />
+          <Progress label="Animation speed" value={SPEEDS.indexOf(c.speed) + 1} max={SPEEDS.length} valueText={speedName(c.speed)} color={theme.colors.accent} />
           <Button key="faster" label="+" variant="secondary" onPress={() => void faster($)} />
         </Box>
         <Text dimColor size="caption">

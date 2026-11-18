@@ -15,8 +15,8 @@ export const toSpeed = (raw: unknown): Speed => {
   return SPEEDS.reduce<Speed>((best, s) => (Math.abs(s - n) < Math.abs(best - n) ? s : best), 1)
 }
 
-// Backgrounds that fail, or come close to failing, the app's flash check above some speed play no faster than this, in
-// light mode the worst: tunnel's rings pass the same spot too often at 1½×, and the flock crossing the window nears the limit.
+// Backgrounds that fail, or come close to failing, the app's flash check above some speed play no faster than this:
+// tunnel's rings pass the same spot too often at 1½×, and the flock crossing the window nears the limit.
 const FASTEST: Partial<Record<string, Speed>> = { tunnel: 1.25, flock: 1.25 }
 /** The speed a background actually plays at. */
 export const speedFor = (kind: string, s: Speed): Speed => Math.min(s, FASTEST[kind] ?? s) as Speed

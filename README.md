@@ -2,6 +2,8 @@
 
 Mods that change how the Claude desktop app looks. There is one so far, **studio-looks**: pick a theme and a moving background for the whole app from a pane beside the conversation.
 
+**Every look is dark.** There is no light mode: while a look is on, the app stays dark even if your system or the app is set to light. To go back to light, turn the look off with `/looks off`.
+
 > [!NOTE]
 > This is an unofficial project, made for fun by Cattywampus Studio. It is not affiliated with, endorsed by or supported by Anthropic. Claude and Claude Code are Anthropic's products.
 
@@ -29,9 +31,9 @@ The look is drawn in the desktop app. A terminal session runs the mod but draws 
 
 ## What you can pick
 
-**A theme** sets the colours for the whole app, in light and dark. There are eighteen:
+**A theme** sets the colours for the whole app, all of them dark. There are twenty-one:
 
-Neon Arcade, Midnight Pop, Workshop, Playground, Dusk, Backstage, Ember, Deep Sea, Orchard, Ink, Green Rain, Cipher, Pixel Dust, Static, Sunset Blocks, Synthwave, Night City, Retro Sunset.
+Aurora, Backstage, Blueprint, Cipher, Deep Sea, Dusk, Ember, Green Rain, Ink, Midnight Pop, Motherboard, Neon Arcade, Night City, Orchard, Pixel Dust, Playground, Retro Sunset, Static, Sunset Blocks, Synthwave, Workshop.
 
 **A background** sits behind the conversation, moving or still. Changing the theme recolours whichever one is in use, so every background works with every theme. **Animation speed**, under the background, plays it slower or faster, from a quarter to one and a half times (Vector tunnel and Murmuration stop at one and a quarter): press − or + beside the bar.
 
@@ -41,7 +43,8 @@ Neon Arcade, Midnight Pop, Workshop, Playground, Dusk, Backstage, Ember, Deep Se
 | <img src="images/plotter.svg" width="260" alt="Blocks being hatched line by line, as a pen plotter draws"><br>**Plotter proof** | <img src="images/weave.svg" width="260" alt="A dotted cloth with chevrons being woven row by row"><br>**Loom** | <img src="images/pixels.svg" width="260" alt="Coloured squares fading in, drifting up and dissolving"><br>**Dissolving pixels** |
 | <img src="images/rain.svg" width="260" alt="Columns of symbols falling at their own speeds"><br>**Falling symbols** | <img src="images/soft.svg" width="260" alt="Soft glows of colour drifting slowly"><br>**Soft glows** | <img src="images/flock.svg" width="260" alt="A flock of square pixels streaming and turning together across a treeline at dusk"><br>**Murmuration** |
 | <img src="images/nebula.svg" width="260" alt="Clouds of colour at either end of a band of stars, with dark lanes and a bright core in each"><br>**Nebula** | <img src="images/ridges.svg" width="260" alt="Stacked rows of a trace whose peaks swell and sink"><br>**Signal ridges** | <img src="images/circuit.svg" width="260" alt="A circuit board with a main chip on each side and pulses of colour running along its traces"><br>**Circuit traces** |
-| <img src="images/tunnel.svg" width="260" alt="Frames of light coming toward you down a square tunnel"><br>**Vector tunnel** |  |  |
+| <img src="images/tunnel.svg" width="260" alt="Frames of light coming toward you down a square tunnel"><br>**Vector tunnel** | <img src="images/borealis.svg" width="260" alt="Curtains of northern lights over a frozen lake between snowy mountains, with spruce and a lit cabin"><br>**Northern lights** | <img src="images/kaleidoscope.svg" width="260" alt="Shapes drifting through a kaleidoscope, mirrored into a slowly turning mandala"><br>**Kaleidoscope** |
+| <img src="images/aquarium.svg" width="260" alt="A vivid pixel reef: striped fish and glowing jellyfish over coral, sea fans, anemones and kelp, with light falling onto rippled sand"><br>**Pixel aquarium** | <img src="images/valley.svg" width="260" alt="A vivid pixel valley: a ringed sun setting behind glowing hills, a winding river, mushrooms and rimmed clouds under a dithered sky"><br>**Dream valley** |  |
 
 The picture at the top of the page is **Grid horizon**. The last choice is **Colours only**: the theme with no background.
 

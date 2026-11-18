@@ -23,6 +23,10 @@ const PICTURES: readonly (readonly [Kind, string])[] = [
   ['ridges', 'static'],
   ['circuit', 'green-rain'],
   ['tunnel', 'neon-arcade'],
+  ['borealis', 'aurora'],
+  ['kaleidoscope', 'midnight-pop'],
+  ['aquarium', 'backstage'],
+  ['valley', 'retro-sunset'],
 ]
 
 const out = new URL('../images/', import.meta.url)

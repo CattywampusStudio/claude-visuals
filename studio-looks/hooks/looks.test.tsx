@@ -3,6 +3,7 @@ import { expect, test } from 'claude-code/testing'
 import { jobMark, preview, themedBar } from './bar.ts'
 import { paced, speedFor } from './pace.ts'
 import { KINDS, backdrop } from './scene.ts'
+import { colorsFor } from './look.ts'
 import { THEMES } from './themes.ts'
 
 const BAND = {
@@ -21,10 +22,11 @@ const PANE = {
 
 // `scenes` collects the scene of every look the mod sets, in order ("pixels_on_dusk"), or "none" for colours only.
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
-const engine = (on: Parameters<Extract<Parameters<typeof test>[1], (...args: any) => any>>[1], scenes: string[] = [], veils: number[] = [], answers: (tool: string) => object = () => ({})) => {
+const engine = (on: Parameters<Extract<Parameters<typeof test>[1], (...args: any) => any>>[1], scenes: string[] = [], veils: number[] = [], answers: (tool: string) => object = () => ({}), schemes: string[] = []) => {
   on('command.register', () => ({ value: { command: 'looks' } }))
   on('ui.open', () => ({ value: { isPlaced: true } }))
   on('theme.set', (_, e) => {
+    schemes.push((e as { overrideColorScheme?: string }).overrideColorScheme ?? 'none')
     scenes.push((e as { backdrop?: { scene?: string } }).backdrop?.scene ?? 'none')
     veils.push((e as { backdrop?: { glass?: { opacity?: number } } }).backdrop?.glass?.opacity ?? -1)
     return { value: { isDrawn: true, requestId: 'backdrop' } }
@@ -37,23 +39,31 @@ const engine = (on: Parameters<Extract<Parameters<typeof test>[1], (...args: any
 }
 
 // The desktop app only animates a background whose SVG its player accepts; anything else it draws still, with
-// no error. These lists are the player's own, read from the app's interface code on 2026-11-15: the SVG elements
-// it takes (feColorMatrix is not one), and the CSS functions it knows. `@media(` written without a space reads to
-// it as a function called "media", and a path() or a CSS gradient is refused the same way.
+// no error. These lists are the player's own, read from the app's interface code on 2026-11-17: the SVG elements
+// it takes, the CSS functions and at-rules it knows, and what it refuses outright (a backslash, data:, url() to
+// anything but #id, prefers-color-scheme outside a plain "(prefers-color-scheme: dark)" or ": light" test).
 const ELEMENTS = new Set(
-  'animate animateMotion animateTransform set circle clipPath defs desc ellipse feBlend feComposite feDropShadow feFlood feGaussianBlur feMerge feMergeNode feOffset filter g line linearGradient marker mask mpath path pattern polygon polyline radialGradient rect stop style svg symbol text textPath title tspan use'.split(' '),
+  'animate animateMotion animateTransform set circle clipPath defs desc ellipse feBlend feColorMatrix feComponentTransfer feComposite feConvolveMatrix feDisplacementMap feDropShadow feFlood feFuncA feFuncB feFuncG feFuncR feGaussianBlur feMerge feMergeNode feMorphology feOffset feTurbulence filter g line linearGradient marker mask mpath path pattern polygon polyline radialGradient rect stop style svg symbol text textPath title tspan use'.split(' '),
 )
 const FUNCTIONS = new Set(
-  'url color color-mix hsl hsla hwb lab lch light-dark oklab oklch rgb rgba abs acos asin atan atan2 calc clamp cos exp hypot log max min mod pow rem round sign sin sqrt tan var matrix matrix3d perspective rotate rotate3d rotatex rotatey rotatez scale scale3d scalex scaley scalez skew skewx skewy translate translate3d translatex translatey translatez cubic-bezier linear steps blur drop-shadow grayscale hue-rotate invert opacity saturate sepia is not nth-child nth-last-child nth-last-of-type nth-of-type where'.split(' '),
+  'alpha color color-mix contrast-color dynamic-range-limit-mix hsl hsla hwb lab lch light-dark oklab oklch palette-mix rgb rgba -webkit-calc abs acos add anchor anchor-size asin atan atan2 calc calc-size clamp cos exp fit-content hypot log max min minmax mod pow progress rem repeat round sibling-count sibling-index sign sin sqrt superellipse tan env if var anchored at-rule font-format font-tech media named-feature scroll-state selector style supports circle ellipse inset path polygon ray rect shape xywh -webkit-gradient -webkit-linear-gradient -webkit-radial-gradient -webkit-repeating-linear-gradient -webkit-repeating-radial-gradient color-stop conic-gradient from linear-gradient radial-gradient repeating-conic-gradient repeating-linear-gradient repeating-radial-gradient to matrix matrix3d perspective rotate rotate3d rotatex rotatey rotatez scale scale3d scalex scaley scalez skew skewx skewy translate translate3d translatex translatey translatez accesskey cubic-bezier linear scroll steps view wallclock blur brightness contrast drop-shadow grayscale hue-rotate invert opacity saturate sepia annotation character-variant counter counters ornaments styleset stylistic swash -webkit-any active-view-transition-type cue dir has highlight host host-context is lang not nth-child nth-last-child nth-last-of-type nth-of-type part picker scroll-button slotted state view-transition-group view-transition-group-children view-transition-image-pair view-transition-new view-transition-old where'.split(' '),
 )
-/** What in a scene the player would refuse: elements off its list, functions it does not know, things it bans outright. */
+const AT_RULES = new Set('-webkit-keyframes charset container counter-style keyframes layer media page position-try property scope starting-style supports view-transition'.split(' '))
+/** What in a scene the player would refuse: elements off its list, functions or at-rules it does not know, things it bans outright. */
 const refused = (svg: string): string[] => {
   // what is drawn as words (the symbols of the rain, a label) is not CSS and is not checked
   const code = svg.replace(/>[^<]*</g, (text, at: number) => (svg.slice(0, at).endsWith('<style') || /<style[^>]*$/.test(svg.slice(0, at + 1)) ? text : '><'))
   const elements = [...svg.matchAll(/<([A-Za-z][\w-]*)/g)].map(m => m[1] ?? '').filter(name => !ELEMENTS.has(name))
-  const functions = [...code.matchAll(/([^\s()[\]{}<>;:,'"`=+*/!@#$%^&|~?]{0,64})\(/g)].map(m => (m[1] ?? '').toLowerCase()).filter(name => name !== '' && !FUNCTIONS.has(name))
-  const banned = ['shape-rendering', 'vector-effect', 'data:', '\\'].filter(word => code.includes(word))
-  return [...new Set([...elements, ...functions.map(name => `${name}()`), ...banned])]
+  const functions = [...code.matchAll(/([^\s()[\]{}<>;:,.'"`=+*/!@#$%^&|~?]{0,64})\(/g)].map(m => (m[1] ?? '').toLowerCase()).filter(name => name !== '' && name !== 'url' && !FUNCTIONS.has(name))
+  const atRules = [...code.matchAll(/@([^\s{};("'/]*)/g)].map(m => (m[1] ?? '').toLowerCase()).filter(name => !AT_RULES.has(name))
+  const flat = code.replace(/\s/g, '').toLowerCase()
+  const banned = [
+    ...(code.includes('\\') ? ['\\'] : []),
+    ...(flat.includes('data:') ? ['data:'] : []),
+    ...(/url\(/.test(code.replace(/url\(\s*(["']?)#[A-Za-z_][\w.:-]*\1\s*\)/gi, '').replace(/\s/g, '').toLowerCase()) ? ['url() to more than #id'] : []),
+    ...(/prefers-color-scheme/i.test(code.replace(/\(\s*prefers-color-scheme(?:\s*:\s*(?:dark|light))?\s*\)/gi, '')) ? ['prefers-color-scheme in another form'] : []),
+  ]
+  return [...new Set([...elements, ...functions.map(name => `${name}()`), ...atRules.map(name => `@${name}`), ...banned])]
 }
 
 test('every scene keeps to what the app will animate', async () => {
@@ -62,12 +72,31 @@ test('every scene keeps to what the app will animate', async () => {
       for (const moving of [true, false]) {
         const svg = backdrop(theme, kind, moving)
         expect(refused(svg)).toEqual([])
-        expect(/@media\(/.test(svg)).toBe(false)
       }
     }
   }
-  // the check does catch what the app was seen to refuse
-  expect(refused('<svg><filter><feColorMatrix/></filter><style>@media(prefers-color-scheme:light){a{offset-path:path("M0 0")}}</style></svg>')).toEqual(['feColorMatrix', 'media()', 'path()'])
+  // the check does catch what the app refuses
+  expect(refused('<svg><foreignObject/><style>@import "a.css";a{fill:url(b.svg#c);background:element(#d)}@media (prefers-color-scheme: dim){}</style></svg>')).toEqual(['foreignObject', 'element()', '@import', 'url() to more than #id', 'prefers-color-scheme in another form'])
+})
+
+// Every theme is dark only: the app is held in dark mode whatever its own setting, so no picture carries light colours.
+test('every look is dark only, and the app paints it', async ($, on) => {
+  for (const theme of THEMES) {
+    const made = colorsFor(theme)
+    expect(made.problems.filter(line => line.startsWith("Desktop won't paint"))).toEqual([])
+    expect(Object.keys(made.theme.inputs)).toEqual(['dark'])
+    for (const kind of KINDS) {
+      for (const svg of [backdrop(theme, kind, true), preview(theme, kind), themedBar(theme, kind, 0.5)]) expect(svg).not.toMatch(/prefers-color-scheme/)
+    }
+  }
+  const schemes: string[] = []
+  engine(on, [], [], () => ({}), schemes)
+  await $.session.start({ cwd: '/', surface: 'desktop', isInteractive: true })
+  await $.ui.mount({ ...PANE, surface: 'desktop' })
+  await $.ui.select({ plugin: 'studio-looks', key: 'background', value: 'plain' })
+  await $.ui.select({ plugin: 'studio-looks', key: 'background', value: 'borealis' })
+  expect(schemes.length).toBeGreaterThan(0)
+  expect(schemes.every(s => s === 'dark')).toBe(true)
 })
 
 // The app takes an Svg of at most 131072 characters and draws nothing at all for a longer one: no background, and
@@ -114,6 +143,21 @@ test('a drawn scene is picked in the pane or by its name, and keeps its lines cl
   await ui.unmount()
 })
 
+test('the theme and background lists are in alphabetical order, colours only last', async ($, on) => {
+  engine(on)
+  await $.session.start({ cwd: '/', surface: 'desktop', isInteractive: true })
+  const ui = await $.ui.mount({ ...PANE, surface: 'desktop' })
+  const labels = async (key: string) => ((await ui.find({ key }))?.props.options as { label: string }[]).map(o => o.label)
+  const sorted = (list: string[]) => [...list].sort((a, b) => a.localeCompare(b))
+  const themes = await labels('theme')
+  expect(themes).toEqual(sorted(themes))
+  expect(themes.length).toBe(THEMES.length)
+  const backgrounds = await labels('background')
+  expect(backgrounds.at(-1)).toBe('Colours only')
+  expect(backgrounds.slice(0, -1)).toEqual(sorted(backgrounds.slice(0, -1)))
+  await ui.unmount()
+})
+
 test('changing the theme keeps the background in use', async ($, on) => {
   const scenes: string[] = []
   engine(on, scenes)
@@ -127,10 +171,10 @@ test('changing the theme keeps the background in use', async ($, on) => {
   await $.ui.select({ plugin: 'studio-looks', key: 'theme', value: 'dusk' })
   expect(scenes.at(-1)).toBe('pixels_on_100_dusk')
 
-  // from the arrows and "Use this theme"
+  // from the arrows and "Use this theme", which step through the themes in alphabetical order
   await $.ui.press({ plugin: 'studio-looks', key: 'next' })
   await $.ui.press({ plugin: 'studio-looks', key: 'use' })
-  expect(scenes.at(-1)).toBe('pixels_on_100_backstage')
+  expect(scenes.at(-1)).toBe('pixels_on_100_ember')
 
   await ui.unmount()
 })

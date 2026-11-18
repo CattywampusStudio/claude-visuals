@@ -1,5 +1,5 @@
 // Drawn pieces that are not the backdrop: the progress bars, one for each family of background,
-// and the picker's preview. All follow the light or dark setting the same way the scenes do.
+// and the picker's preview. Like the scenes, each has the theme's one set of colours.
 import { SCENERY } from './scenery.ts'
 import type { Scenery } from './scenery.ts'
 import type { Mode, Theme } from './themes.ts'
@@ -20,8 +20,7 @@ export const lavaBar = (theme: Theme, fraction: number | null): string => {
   const fill = known ? Math.max(0, Math.min(1, fraction)) * W : W
   const style =
     `<style>` +
-    `svg{${vars(theme.dark)}}` +
-    `@media(prefers-color-scheme:light){svg{${vars(theme.light)}}}` +
+    `svg{${vars(theme.colors)}}` +
     `.track{fill:var(--text);fill-opacity:.1;stroke:var(--text);stroke-opacity:.22}` +
     [0, 1, 2, 3].map(i => `.c${i}{fill:var(--w${i})}.s${i}{stop-color:var(--w${i})}`).join('') +
     `.shine{fill:#fff;fill-opacity:.22}` +
@@ -60,7 +59,7 @@ export const lavaBar = (theme: Theme, fraction: number | null): string => {
 
 /** Shared head of the two bars below: the theme's colours in both modes. */
 const barStyle = (theme: Theme, css: string) =>
-  `<style>svg{${vars(theme.dark)}}@media(prefers-color-scheme:light){svg{${vars(theme.light)}}}` +
+  `<style>svg{${vars(theme.colors)}}` +
   `${[0, 1, 2, 3].map(i => `.c${i}{fill:var(--w${i})}`).join('')}.e{fill:var(--text);fill-opacity:.13}.hd{fill:var(--text)}${css}</style>`
 
 /**
@@ -165,7 +164,7 @@ export const neonBar = (theme: Theme, fraction: number | null): string => {
  */
 export const jobMark = (theme: Theme, status: 'running' | 'done' | 'failed' | 'stopped'): string => {
   const style =
-    `<style>svg{${vars(theme.dark)}}@media (prefers-color-scheme:light){svg{${vars(theme.light)}}}` +
+    `<style>svg{${vars(theme.colors)}}` +
     `.t{fill:none;stroke:var(--text);stroke-opacity:.22;stroke-width:2}.a{fill:none;stroke:var(--w1);stroke-width:2;stroke-linecap:round}` +
     `.f{fill:var(--w2)}.k{fill:none;stroke:var(--ground);stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round}.x{fill:none;stroke:var(--text);stroke-width:1.6;stroke-linecap:round}` +
     (status === 'running' ? `.go{transform-origin:7px 7px;animation:go 1.6s linear infinite}@keyframes go{to{transform:rotate(360deg)}}@media (prefers-reduced-motion:reduce){.go{animation:none}}` : '') +
@@ -184,7 +183,7 @@ export const jobMark = (theme: Theme, status: 'running' | 'done' | 'failed' | 's
 
 const isScenery = (background: string): background is Scenery => Object.hasOwn(SCENERY, background)
 /** The scenes of squares and fine lines take the stepped cells; the pictures take the neon line. */
-const isMechanical = (background: string) => ['pixels', 'plotter', 'weave', 'flock', 'ridges', 'circuit'].includes(background)
+const isMechanical = (background: string) => ['pixels', 'plotter', 'weave', 'flock', 'ridges', 'circuit', 'aquarium', 'valley'].includes(background)
 
 /** The progress bar in the style of the background in use: cells, symbols, a neon line, or the wax tube. */
 export const themedBar = (theme: Theme, background: string, fraction: number | null): string =>
@@ -252,8 +251,7 @@ export const preview = (theme: Theme, background: string = theme.background): st
     `<style>.bl{animation:bl 5s ease-in-out infinite alternate}@keyframes bl{from{opacity:.15}to{opacity:1}}` +
     `.rn{font:11px ui-monospace,Menlo,monospace;text-anchor:middle;animation:rn 6s linear infinite}@keyframes rn{from{transform:translateY(-70px)}to{transform:translateY(150px)}}.hd{fill:var(--text)}` +
     `.sy{font:600 10px ui-monospace,Menlo,monospace;text-anchor:middle}@media(prefers-reduced-motion:reduce){.bl,.rn{animation:none}}</style>` +
-    `<style>svg{${vars(theme.dark)};--card:${theme.dark.card};--accent:${theme.dark.accent};--wax:.75}` +
-    `@media(prefers-color-scheme:light){svg{${vars(theme.light)};--card:${theme.light.card};--accent:${theme.light.accent};--wax:.55}}` +
+    `<style>svg{${vars(theme.colors)};--card:${theme.colors.card};--accent:${theme.colors.accent};--wax:.75}` +
     `.g{fill:var(--ground)}.edge{fill:none;stroke:var(--text);stroke-opacity:.22}.k{fill:var(--card);fill-opacity:.72;stroke:var(--text);stroke-opacity:.1}` +
     `${[0, 1, 2, 3].map(i => `.c${i}{fill:var(--w${i})}`).join('')}.wax{opacity:var(--wax)}` +
     `.t{fill:var(--text)}.m{fill:var(--text);fill-opacity:.38}.a{fill:var(--accent)}.tr{fill:var(--text);fill-opacity:.14}` +
